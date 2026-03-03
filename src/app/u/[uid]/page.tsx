@@ -173,8 +173,64 @@ export default async function ProfilePage({ params }: PageProps) {
           </p>
         </div>
 
-        {/* Integration Accordions */}
-        <div className="w-full space-y-4 mb-12 text-left px-2">
+        {/* Action Buttons */}
+        <div className="mb-12 flex flex-col sm:flex-row gap-3 items-center justify-center">
+           <SaveContactButton user={userData} accentColor={theme.accentColor} isBold={isBold} />
+           {userData.bookingUrl && (
+             <a
+               href={formatUrl(userData.bookingUrl)}
+               target="_blank"
+               rel="noopener noreferrer"
+               className="px-10 py-4 rounded-full font-black text-lg transition-all hover:scale-105 active:scale-95 shadow-xl flex items-center gap-2"
+               style={{
+                 backgroundColor: isDark ? '#FFFFFF' : '#000000',
+                 color: isDark ? '#000000' : '#FFFFFF'
+               }}
+             >
+               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+               </svg>
+               Schedule Meeting
+             </a>
+           )}
+        </div>
+
+        {/* CV Highlights Section */}
+        <div className="mb-16 space-y-6 text-left px-2">
+           <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 text-center mb-6">Core Achievements</h3>
+           <div className="grid grid-cols-1 gap-4">
+             {highlights.map((item, idx) => (
+               <a 
+                 key={idx}
+                 href={formatUrl(item.link)}
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="group p-6 rounded-[2rem] bg-white border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500"
+                 style={{ 
+                    backgroundColor: isDark ? '#111' : '#FFF',
+                    borderColor: isDark ? '#222' : '#F1F1F1'
+                 }}
+               >
+                 <div className="flex items-start justify-between gap-4">
+                   <div className="space-y-2">
+                     <h4 className="font-black text-lg leading-tight" style={{ color: isBold ? theme.accentColor : 'inherit' }}>
+                       {item.title}
+                     </h4>
+                     <p className="text-sm font-medium opacity-50 leading-relaxed">
+                       {item.description}
+                     </p>
+                   </div>
+                   <div className="p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{ backgroundColor: theme.accentColor + '20', color: theme.accentColor }}>
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                   </div>
+                 </div>
+               </a>
+             ))}
+           </div>
+        </div>
+
+        {/* Integration Accordions (Clinical Research & Tech Projects) */}
+        <div className="w-full space-y-4 mb-16 text-left px-2">
           {articles.length > 0 && (
             <details className="group bg-white border border-gray-100 rounded-[2rem] overflow-hidden shadow-sm transition-all duration-500" style={{ backgroundColor: isDark ? '#111' : '#FFF', borderColor: isDark ? '#222' : '#F1F1F1' }}>
               <summary className="p-6 cursor-pointer list-none flex justify-between items-center font-black uppercase tracking-widest text-[10px] opacity-50 hover:opacity-100 transition-opacity">
@@ -215,28 +271,6 @@ export default async function ProfilePage({ params }: PageProps) {
               </div>
             </details>
           )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="mb-12 flex flex-col sm:flex-row gap-3 items-center justify-center">
-           <SaveContactButton user={userData} accentColor={theme.accentColor} isBold={isBold} />
-           {userData.bookingUrl && (
-             <a
-               href={formatUrl(userData.bookingUrl)}
-               target="_blank"
-               rel="noopener noreferrer"
-               className="px-10 py-4 rounded-full font-black text-lg transition-all hover:scale-105 active:scale-95 shadow-xl flex items-center gap-2"
-               style={{
-                 backgroundColor: isDark ? '#FFFFFF' : '#000000',
-                 color: isDark ? '#000000' : '#FFFFFF'
-               }}
-             >
-               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-               </svg>
-               Schedule Meeting
-             </a>
-           )}
         </div>
 
         {/* Clinical Integration (QI Projects) Section */}
@@ -284,40 +318,6 @@ export default async function ProfilePage({ params }: PageProps) {
             </div>
           </div>
         )}
-
-        {/* CV Highlights Section */}
-        <div className="mb-16 space-y-6 text-left px-2">
-           <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 text-center mb-6">Core Achievements</h3>
-           <div className="grid grid-cols-1 gap-4">
-             {highlights.map((item, idx) => (
-               <a 
-                 key={idx}
-                 href={formatUrl(item.link)}
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 className="group p-6 rounded-[2rem] bg-white border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500"
-                 style={{ 
-                    backgroundColor: isDark ? '#111' : '#FFF',
-                    borderColor: isDark ? '#222' : '#F1F1F1'
-                 }}
-               >
-                 <div className="flex items-start justify-between gap-4">
-                   <div className="space-y-2">
-                     <h4 className="font-black text-lg leading-tight" style={{ color: isBold ? theme.accentColor : 'inherit' }}>
-                       {item.title}
-                     </h4>
-                     <p className="text-sm font-medium opacity-50 leading-relaxed">
-                       {item.description}
-                     </p>
-                   </div>
-                   <div className="p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{ backgroundColor: theme.accentColor + '20', color: theme.accentColor }}>
-                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                   </div>
-                 </div>
-               </a>
-             ))}
-           </div>
-        </div>
 
         {/* Links Section */}
         <div className="space-y-3 w-full px-2 mb-16">
