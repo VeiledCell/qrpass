@@ -91,8 +91,25 @@ export default async function ProfilePage({ params }: PageProps) {
         </div>
 
         {/* Action Buttons */}
-        <div className="mb-12 flex flex-col gap-3 items-center">
+        <div className="mb-12 flex flex-col sm:flex-row gap-3 items-center justify-center">
            <SaveContactButton user={userData} accentColor={theme.accentColor} isBold={isBold} />
+           {userData.bookingUrl && (
+             <a
+               href={formatUrl(userData.bookingUrl)}
+               target="_blank"
+               rel="noopener noreferrer"
+               className="px-10 py-4 rounded-full font-black text-lg transition-all hover:scale-105 active:scale-95 shadow-xl flex items-center gap-2"
+               style={{
+                 backgroundColor: isDark ? '#FFFFFF' : '#000000',
+                 color: isDark ? '#000000' : '#FFFFFF'
+               }}
+             >
+               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+               </svg>
+               Schedule Meeting
+             </a>
+           )}
         </div>
 
         {/* Links Section */}

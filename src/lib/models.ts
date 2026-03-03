@@ -17,6 +17,7 @@ export interface UserProfile {
   phone?: string;
   email?: string;
   avatarUrl?: string;
+  bookingUrl?: string;
   links: Link[];
   isPremium: boolean;
   designPrefs: DesignPrefs;

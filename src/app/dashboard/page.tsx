@@ -101,6 +101,7 @@ export default function Dashboard() {
         phone: profile.phone || "",
         email: profile.email || "",
         avatarUrl: profile.avatarUrl || "",
+        bookingUrl: profile.bookingUrl || "",
         links: profile.links,
         designPrefs: profile.designPrefs,
         isPremium: profile.isPremium
@@ -284,6 +285,17 @@ export default function Dashboard() {
                   value={profile.email || ""}
                   onChange={(e) => setProfile({...profile, email: e.target.value})}
                   placeholder="name@example.com"
+                  className="w-full px-5 py-3 bg-gray-50 border-2 border-transparent focus:border-black rounded-xl outline-none transition-all font-semibold"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Scheduling Link (e.g. Calendly)</label>
+                <input 
+                  type="text" 
+                  value={profile.bookingUrl || ""}
+                  onChange={(e) => setProfile({...profile, bookingUrl: e.target.value})}
+                  placeholder="https://calendly.com/yourname"
                   className="w-full px-5 py-3 bg-gray-50 border-2 border-transparent focus:border-black rounded-xl outline-none transition-all font-semibold"
                 />
               </div>
