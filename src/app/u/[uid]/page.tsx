@@ -44,6 +44,27 @@ export default async function ProfilePage({ params }: PageProps) {
     return url.startsWith("http") ? url : `https://${url}`;
   };
 
+  // PLACEHOLDER DATA FOR MEDICAL QUALITY IMPROVEMENT
+  const highlights = (userData.cvHighlights && userData.cvHighlights.length > 0) 
+    ? userData.cvHighlights 
+    : [
+        {
+          title: "Sepsis Bundle Compliance Strategy",
+          description: "Implemented a multi-disciplinary rapid response protocol reducing mortality by 18% over 12 months.",
+          link: "https://example.com/medical-qi"
+        },
+        {
+          title: "Lean Six Sigma: Surgical Efficiency",
+          description: "Streamlined pre-operative workflows in a tertiary care center, saving 45 minutes per surgical case.",
+          link: "https://example.com/lean-medical"
+        },
+        {
+          title: "Patient Safety & EMR Integration",
+          description: "Led the digital integration of automated medication reconciliation systems for high-acuity wards.",
+          link: "https://example.com/emr-safety"
+        }
+      ];
+
   return (
     <main 
       className={`min-h-screen flex flex-col items-center p-6 sm:p-12 transition-all duration-1000 font-sans`}
@@ -105,11 +126,45 @@ export default async function ProfilePage({ params }: PageProps) {
                }}
              >
                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v12a2 2 0 002 2z" />
                </svg>
                Schedule Meeting
              </a>
            )}
+        </div>
+
+        {/* CV Highlights Section */}
+        <div className="mb-16 space-y-6 text-left px-2">
+           <h3 className="text-xs font-black uppercase tracking-[0.3em] opacity-30 ml-2 mb-4 text-center">Core Achievements</h3>
+           <div className="grid grid-cols-1 gap-4">
+             {highlights.map((item, idx) => (
+               <a 
+                 key={idx}
+                 href={formatUrl(item.link)}
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="group p-6 rounded-[2.5rem] bg-white border border-gray-100 shadow-sm hover:shadow-2xl hover:scale-[1.02] transition-all duration-500"
+                 style={{ 
+                    backgroundColor: isDark ? '#111' : '#FFF',
+                    borderColor: isDark ? '#222' : '#F1F1F1'
+                 }}
+               >
+                 <div className="flex items-start justify-between gap-4">
+                   <div className="space-y-2">
+                     <h4 className="font-black text-lg sm:text-xl leading-tight" style={{ color: isBold ? theme.accentColor : 'inherit' }}>
+                       {item.title}
+                     </h4>
+                     <p className="text-sm font-medium opacity-50 leading-relaxed">
+                       {item.description}
+                     </p>
+                   </div>
+                   <div className="p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{ backgroundColor: theme.accentColor + '20', color: theme.accentColor }}>
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                   </div>
+                 </div>
+               </a>
+             ))}
+           </div>
         </div>
 
         {/* Links Section */}

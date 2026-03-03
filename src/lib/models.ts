@@ -3,6 +3,12 @@ export interface Link {
   url: string;
 }
 
+export interface CVHighlight {
+  title: string;
+  description: string;
+  link: string;
+}
+
 export interface DesignPrefs {
   theme: 'minimal' | 'bold' | 'dark';
   accentColor: string;
@@ -18,6 +24,7 @@ export interface UserProfile {
   email?: string;
   avatarUrl?: string;
   bookingUrl?: string;
+  cvHighlights?: CVHighlight[];
   links: Link[];
   isPremium: boolean;
   designPrefs: DesignPrefs;

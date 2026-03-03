@@ -6,7 +6,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/navigation";
-import { UserProfile, Link as ProfileLink, DesignPrefs } from "@/lib/models";
+import { UserProfile, Link as ProfileLink, DesignPrefs, CVHighlight } from "@/lib/models";
 import Link from "next/link";
 import { QRCodeCanvas } from "qrcode.react";
 
@@ -53,36 +53,16 @@ export default function Dashboard() {
     }
 
     setUploading(true);
-    console.log("Starting upload for:", file.name);
-    
     try {
       const storageRef = ref(storage, `avatars/${profile.uid}`);
-      console.log("Storage Ref created:", storageRef.fullPath);
-      
-      const snapshot = await uploadBytes(storageRef, file);
-      console.log("Upload successful, snapshot:", snapshot);
-      
+      await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
-      console.log("Download URL obtained:", url);
-      
       setProfile({ ...profile, avatarUrl: url });
-      
-      // Auto-save the avatar URL to Firestore
       const docRef = doc(db, "users", profile.uid);
       await updateDoc(docRef, { avatarUrl: url });
-      console.log("Firestore updated with new avatar URL");
-      
     } catch (err: any) {
-      console.error("Full Upload Error Object:", err);
-      let message = "Failed to upload image.";
-      if (err.code === 'storage/unauthorized') {
-        message = "Permission denied. Please check your Firebase Storage Rules.";
-      } else if (err.code === 'storage/canceled') {
-        message = "Upload canceled.";
-      } else if (err.code === 'storage/unknown') {
-        message = "Unknown error. Check if Firebase Storage is enabled in the console.";
-      }
-      alert(`${message} (Error: ${err.code || 'unknown'})`);
+      console.error("Upload Error:", err);
+      alert("Failed to upload image.");
     } finally {
       setUploading(false);
     }
@@ -102,6 +82,7 @@ export default function Dashboard() {
         email: profile.email || "",
         avatarUrl: profile.avatarUrl || "",
         bookingUrl: profile.bookingUrl || "",
+        cvHighlights: profile.cvHighlights || [],
         links: profile.links,
         designPrefs: profile.designPrefs,
         isPremium: profile.isPremium
@@ -127,20 +108,35 @@ export default function Dashboard() {
     }
   };
 
-  const updateDesign = (field: keyof DesignPrefs, value: string) => {
+  const addCVHighlight = () => {
     if (!profile) return;
+    const currentHighlights = profile.cvHighlights || [];
+    if (currentHighlights.length >= 3) {
+      alert("Maximum 3 highlights allowed.");
+      return;
+    }
     setProfile({
       ...profile,
-      designPrefs: { ...profile.designPrefs, [field]: value }
+      cvHighlights: [...currentHighlights, { title: "", description: "", link: "" }]
     });
+  };
+
+  const updateCVHighlight = (index: number, field: keyof CVHighlight, value: string) => {
+    if (!profile || !profile.cvHighlights) return;
+    const newHighlights = [...profile.cvHighlights];
+    newHighlights[index] = { ...newHighlights[index], [field]: value };
+    setProfile({ ...profile, cvHighlights: newHighlights });
+  };
+
+  const removeCVHighlight = (index: number) => {
+    if (!profile || !profile.cvHighlights) return;
+    const newHighlights = profile.cvHighlights.filter((_, i) => i !== index);
+    setProfile({ ...profile, cvHighlights: newHighlights });
   };
 
   const addLink = () => {
     if (!profile) return;
-    setProfile({
-      ...profile,
-      links: [...profile.links, { label: "", url: "" }]
-    });
+    setProfile({ ...profile, links: [...profile.links, { label: "", url: "" }] });
   };
 
   const updateLink = (index: number, field: keyof ProfileLink, value: string) => {
@@ -156,258 +152,160 @@ export default function Dashboard() {
     setProfile({ ...profile, links: newLinks });
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold">Loading Editor...</div>;
-  
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-black bg-white">Loading Editor...</div>;
   if (error) return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-4">
-      <h2 className="text-2xl font-black text-red-600">Dashboard Error</h2>
-      <p className="text-gray-500 max-w-sm">{error}</p>
-      <button 
-        onClick={() => router.push("/login")}
-        className="px-8 py-3 bg-black text-white rounded-2xl font-bold"
-      >
-        Back to Login
-      </button>
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-4 bg-white text-black font-sans">
+      <h2 className="text-2xl font-black text-red-600 uppercase tracking-tighter">Dashboard Error</h2>
+      <p className="text-gray-500 max-w-sm font-medium">{error}</p>
+      <button onClick={() => router.push("/login")} className="px-10 py-4 bg-black text-white rounded-full font-black uppercase tracking-widest text-xs">Back to Login</button>
     </div>
   );
-
   if (!profile) return null;
 
   const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/u/${profile.uid}`;
 
   return (
-    <main className="min-h-screen bg-gray-50 text-black p-4 sm:p-8">
-      <div className="max-w-5xl mx-auto space-y-8">
+    <main className="min-h-screen bg-gray-50 text-black p-4 sm:p-8 font-sans">
+      <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
           <div>
-            <h1 className="text-2xl font-black">Profile Editor</h1>
-            <p className="text-gray-400 text-sm font-medium">Manage your virtual business card</p>
+            <h1 className="text-3xl font-black tracking-tighter uppercase">Editor</h1>
+            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Digital Identity Dashboard</p>
           </div>
-          <div className="flex gap-3">
-            <Link 
-              href={`/u/${profile.uid}`}
-              className="px-6 py-2 border-2 border-black rounded-full font-bold text-sm hover:bg-black hover:text-white transition-all"
-            >
-              View Public Card
-            </Link>
-            <button 
-              onClick={() => signOut(auth)}
-              className="px-6 py-2 bg-gray-100 rounded-full font-bold text-sm hover:bg-red-50 hover:text-red-600 transition-all text-gray-400"
-            >
-              Sign Out
-            </button>
+          <div className="flex gap-4">
+            <Link href={`/u/${profile.uid}`} className="px-8 py-3 border-2 border-black rounded-full font-black text-xs uppercase tracking-widest hover:bg-black hover:text-white transition-all">View Public Card</Link>
+            <button onClick={() => signOut(auth)} className="px-8 py-3 bg-gray-100 rounded-full font-black text-xs uppercase tracking-widest text-gray-400 hover:bg-red-50 hover:text-red-600 transition-all">Sign Out</button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Main Info */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-6">
-              <h2 className="font-black text-xl text-gray-400 uppercase tracking-widest text-[10px]">Contact Information</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Info Columns */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Contact Info */}
+            <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 space-y-8">
+              <h2 className="text-xs font-black uppercase tracking-widest text-gray-400">Profile & Contact</h2>
               
-              {/* Photo Upload Area */}
-              <div className="flex items-center gap-6 p-4 bg-gray-50 rounded-3xl">
-                <div className="relative w-20 h-20 bg-gray-200 rounded-2xl overflow-hidden flex-shrink-0">
+              <div className="flex items-center gap-6 p-6 bg-gray-50 rounded-[2rem]">
+                <div className="relative w-24 h-24 bg-gray-200 rounded-[2rem] overflow-hidden flex-shrink-0 shadow-inner">
                   {profile.avatarUrl ? (
                     <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-2xl font-black text-gray-400">
-                      {profile.displayName.charAt(0)}
-                    </div>
+                    <div className="w-full h-full flex items-center justify-center text-3xl font-black text-gray-300">{profile.displayName.charAt(0)}</div>
                   )}
                   {uploading && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     </div>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <label className="block">
-                    <span className="sr-only">Choose profile photo</span>
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer"
-                    />
+                    <span className="sr-only">Choose photo</span>
+                    <input type="file" accept="image/*" onChange={handleImageUpload} className="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-6 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer uppercase tracking-widest" />
                   </label>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">JPG, PNG or GIF. Max 5MB.</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Square photos look best (max 5mb)</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Full Name</label>
-                  <input 
-                    type="text" 
-                    value={profile.displayName}
-                    onChange={(e) => setProfile({...profile, displayName: e.target.value})}
-                    className="w-full px-5 py-3 bg-gray-50 border-2 border-transparent focus:border-black rounded-xl outline-none transition-all font-semibold"
-                  />
+                  <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Full Name</label>
+                  <input type="text" value={profile.displayName} onChange={(e) => setProfile({...profile, displayName: e.target.value})} className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none font-bold focus:ring-2 ring-black/5" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Job Title</label>
-                  <input 
-                    type="text" 
-                    value={profile.jobTitle || ""}
-                    onChange={(e) => setProfile({...profile, jobTitle: e.target.value})}
-                    placeholder="CEO / Founder"
-                    className="w-full px-5 py-3 bg-gray-50 border-2 border-transparent focus:border-black rounded-xl outline-none transition-all font-semibold"
-                  />
+                  <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Job Title</label>
+                  <input type="text" value={profile.jobTitle || ""} onChange={(e) => setProfile({...profile, jobTitle: e.target.value})} placeholder="e.g. Quality Improvement Specialist" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none font-bold focus:ring-2 ring-black/5" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Company</label>
-                  <input 
-                    type="text" 
-                    value={profile.company || ""}
-                    onChange={(e) => setProfile({...profile, company: e.target.value})}
-                    placeholder="Company Name"
-                    className="w-full px-5 py-3 bg-gray-50 border-2 border-transparent focus:border-black rounded-xl outline-none transition-all font-semibold"
-                  />
+                  <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Company</label>
+                  <input type="text" value={profile.company || ""} onChange={(e) => setProfile({...profile, company: e.target.value})} placeholder="e.g. Mayo Clinic" className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none font-bold focus:ring-2 ring-black/5" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Phone Number</label>
-                  <input 
-                    type="tel" 
-                    value={profile.phone || ""}
-                    onChange={(e) => setProfile({...profile, phone: e.target.value})}
-                    placeholder="+1 234 567 890"
-                    className="w-full px-5 py-3 bg-gray-50 border-2 border-transparent focus:border-black rounded-xl outline-none transition-all font-semibold"
-                  />
+                  <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Phone</label>
+                  <input type="tel" value={profile.phone || ""} onChange={(e) => setProfile({...profile, phone: e.target.value})} className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none font-bold focus:ring-2 ring-black/5" />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Email Address</label>
-                <input 
-                  type="email" 
-                  value={profile.email || ""}
-                  onChange={(e) => setProfile({...profile, email: e.target.value})}
-                  placeholder="name@example.com"
-                  className="w-full px-5 py-3 bg-gray-50 border-2 border-transparent focus:border-black rounded-xl outline-none transition-all font-semibold"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Scheduling Link (e.g. Calendly)</label>
-                <input 
-                  type="text" 
-                  value={profile.bookingUrl || ""}
-                  onChange={(e) => setProfile({...profile, bookingUrl: e.target.value})}
-                  placeholder="https://calendly.com/yourname"
-                  className="w-full px-5 py-3 bg-gray-50 border-2 border-transparent focus:border-black rounded-xl outline-none transition-all font-semibold"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Short Bio</label>
-                <textarea 
-                  value={profile.bio}
-                  rows={2}
-                  onChange={(e) => setProfile({...profile, bio: e.target.value})}
-                  className="w-full px-5 py-3 bg-gray-50 border-2 border-transparent focus:border-black rounded-xl outline-none transition-all font-semibold resize-none"
-                />
+                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Email</label>
+                <input type="email" value={profile.email || ""} onChange={(e) => setProfile({...profile, email: e.target.value})} className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none font-bold focus:ring-2 ring-black/5" />
               </div>
             </div>
 
-            {/* Links Section */}
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-6">
+            {/* CV Highlights Section */}
+            <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 space-y-8">
               <div className="flex justify-between items-center">
-                <h2 className="font-black text-xl text-gray-400 uppercase tracking-widest text-[10px]">Social & Web Links</h2>
-                <button onClick={addLink} className="p-2 bg-black text-white rounded-xl hover:scale-110 transition-transform">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
+                <h2 className="text-xs font-black uppercase tracking-widest text-gray-400">CV Highlights (Max 3)</h2>
+                {(profile.cvHighlights || []).length < 3 && (
+                  <button onClick={addCVHighlight} className="p-3 bg-black text-white rounded-[1rem] hover:scale-110 transition-transform">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
+                  </button>
+                )}
               </div>
 
-              <div className="space-y-3">
-                {profile.links.map((link, index) => (
-                  <div key={index} className="flex gap-3 items-center bg-gray-50 p-3 rounded-xl border border-transparent hover:border-gray-200 transition-all">
-                    <input 
-                      placeholder="Label" 
-                      value={link.label}
-                      onChange={(e) => updateLink(index, 'label', e.target.value)}
-                      className="flex-1 bg-transparent font-bold outline-none text-sm"
-                    />
-                    <input 
-                      placeholder="URL" 
-                      value={link.url}
-                      onChange={(e) => updateLink(index, 'url', e.target.value)}
-                      className="flex-[2] bg-transparent text-xs text-gray-400 outline-none"
-                    />
-                    <button onClick={() => removeLink(index)} className="text-red-400 hover:text-red-600 p-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+              <div className="space-y-6">
+                {(profile.cvHighlights || []).map((highlight, index) => (
+                  <div key={index} className="p-6 bg-gray-50 rounded-[2rem] border border-transparent hover:border-gray-200 transition-all space-y-4 relative group">
+                    <button onClick={() => removeCVHighlight(index)} className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
+                    <div className="grid grid-cols-1 gap-4">
+                      <input placeholder="Highlight Title (e.g. Sepsis Protocol Optimization)" value={highlight.title} onChange={(e) => updateCVHighlight(index, 'title', e.target.value)} className="w-full bg-transparent font-black text-lg outline-none placeholder:text-gray-300" />
+                      <textarea placeholder="Description of your achievement..." value={highlight.description} rows={2} onChange={(e) => updateCVHighlight(index, 'description', e.target.value)} className="w-full bg-transparent font-medium text-sm text-gray-500 outline-none resize-none placeholder:text-gray-300" />
+                      <div className="flex items-center gap-2 text-blue-500">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                        <input placeholder="Resource Link (Publication, Project URL)" value={highlight.link} onChange={(e) => updateCVHighlight(index, 'link', e.target.value)} className="flex-1 bg-transparent text-xs font-bold outline-none placeholder:text-blue-200" />
+                      </div>
+                    </div>
                   </div>
                 ))}
+                {(profile.cvHighlights || []).length === 0 && (
+                  <div className="text-center py-12 border-2 border-dashed border-gray-100 rounded-[2rem] text-gray-300 font-bold uppercase tracking-widest text-[10px]">No highlights added yet</div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Design & Preview */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col items-center text-center space-y-4">
-              <h2 className="font-black text-xl text-gray-400 uppercase tracking-widest text-[10px]">Your Card QR Code</h2>
-              <div className="p-4 bg-white rounded-3xl shadow-xl border border-gray-50">
-                <QRCodeCanvas value={publicUrl} size={150} level="H" includeMargin={true} />
+          {/* Sidebar */}
+          <div className="space-y-8">
+            {/* QR Card */}
+            <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-gray-100 flex flex-col items-center text-center space-y-6">
+              <h2 className="text-xs font-black uppercase tracking-widest text-gray-400">Identity QR</h2>
+              <div className="p-6 bg-white rounded-[2.5rem] shadow-2xl border border-gray-50">
+                <QRCodeCanvas value={publicUrl} size={160} level="H" includeMargin={true} />
               </div>
-              <p className="text-[10px] font-bold text-gray-400 max-w-[180px] leading-relaxed uppercase tracking-tighter">
-                Show this to anyone to instantly share your digital card.
-              </p>
+              <p className="text-[10px] font-black text-gray-400 max-w-[160px] leading-tight uppercase tracking-tighter">Your public card is always one scan away</p>
             </div>
 
-            <div className={`bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 space-y-6 transition-all ${!profile.isPremium ? 'opacity-50' : ''}`}>
+            {/* Design Controls */}
+            <div className={`bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 space-y-6 transition-all ${!profile.isPremium ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="flex items-center justify-between">
-                <h2 className="font-black text-xl text-gray-400 uppercase tracking-widest text-[10px]">Visual Theme (Pro)</h2>
+                <h2 className="text-xs font-black uppercase tracking-widest text-gray-400">Design System</h2>
                 {!profile.isPremium && <span className="px-3 py-1 bg-black text-white text-[8px] font-black rounded-full uppercase tracking-widest">Locked</span>}
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Style</label>
-                  <select 
-                    disabled={!profile.isPremium}
-                    value={profile.designPrefs.theme}
-                    onChange={(e) => updateDesign('theme', e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 rounded-xl outline-none font-bold text-xs appearance-none cursor-pointer"
-                  >
-                    <option value="minimal">Minimalist</option>
-                    <option value="bold">Bold Impact</option>
-                    <option value="dark">Deep Dark</option>
+                  <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Theme Style</label>
+                  <select value={profile.designPrefs.theme} onChange={(e) => updateDesign('theme', e.target.value)} className="w-full px-5 py-4 bg-gray-50 rounded-2xl outline-none font-bold text-xs appearance-none cursor-pointer">
+                    <option value="minimal">Minimal</option><option value="bold">High Contrast</option><option value="dark">Midnight</option>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Accent</label>
-                  <div className="flex gap-2">
-                    <input 
-                      disabled={!profile.isPremium}
-                      type="color" 
-                      value={profile.designPrefs.accentColor}
-                      onChange={(e) => updateDesign('accentColor', e.target.value)}
-                      className="w-10 h-10 rounded-lg border-none p-0 cursor-pointer"
-                    />
-                    <input 
-                      disabled={!profile.isPremium}
-                      type="text" 
-                      value={profile.designPrefs.accentColor}
-                      onChange={(e) => updateDesign('accentColor', e.target.value)}
-                      className="flex-1 px-4 py-3 bg-gray-50 rounded-xl outline-none font-bold text-xs"
-                    />
+                  <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Accent Color</label>
+                  <div className="flex gap-3">
+                    <input type="color" value={profile.designPrefs.accentColor} onChange={(e) => updateDesign('accentColor', e.target.value)} className="w-14 h-14 rounded-2xl border-none p-0 cursor-pointer overflow-hidden shadow-sm" />
+                    <input type="text" value={profile.designPrefs.accentColor} onChange={(e) => updateDesign('accentColor', e.target.value)} className="flex-1 px-5 py-4 bg-gray-50 rounded-2xl outline-none font-bold text-xs" />
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-black text-white p-8 rounded-[2.5rem] shadow-2xl space-y-6">
-              <button onClick={togglePremium} className={`w-full py-4 rounded-2xl font-bold text-sm transition-all active:scale-95 ${profile.isPremium ? 'bg-gray-800 text-gray-500' : 'bg-white text-black'}`}>
-                {profile.isPremium ? "Deactivate Pro" : "Try Pro Features"}
-              </button>
-              <button onClick={handleSave} disabled={saving} className="w-full py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-2xl font-bold text-sm transition-all disabled:opacity-50">
-                {saving ? "Saving..." : "Save Card Details"}
+            {/* Save & Actions */}
+            <div className="bg-black text-white p-10 rounded-[3rem] shadow-2xl space-y-6">
+              <button onClick={handleSave} disabled={saving} className="w-full py-5 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-xl disabled:opacity-50">{saving ? "Saving Changes..." : "Publish Updates"}</button>
+              <button onClick={togglePremium} className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 ${profile.isPremium ? 'bg-gray-800 text-gray-500' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+                {profile.isPremium ? "Member: PRO" : "Upgrade to Pro"}
               </button>
             </div>
           </div>
