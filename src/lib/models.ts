@@ -34,6 +34,7 @@ export interface UserProfile {
   bookingUrl?: string;
   cvHighlights?: CVHighlight[];
   qiProjects?: QIProject[];
+  showQiProjects?: boolean;
   links: Link[];
   isPremium: boolean;
   viewCount?: number;

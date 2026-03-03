@@ -144,48 +144,50 @@ export default async function ProfilePage({ params }: PageProps) {
         </div>
 
         {/* Clinical Integration (QI Projects) Section */}
-        <div className="mb-16 space-y-8 text-left px-2">
-           <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 text-center mb-6">Clinical Integration Portfolio</h3>
-           <div className="grid grid-cols-1 gap-6">
-             {projects.map((project, idx) => (
-               <div 
-                 key={idx}
-                 className="p-8 rounded-[2.5rem] bg-white border border-gray-100 shadow-sm transition-all duration-500 overflow-hidden relative"
-                 style={{ 
-                    backgroundColor: isDark ? '#111' : '#FFF',
-                    borderColor: isDark ? '#222' : '#F1F1F1'
-                 }}
-               >
-                 <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: theme.accentColor }}></div>
-                 <h4 className="font-black text-xl mb-6 tracking-tight" style={{ color: isBold ? theme.accentColor : 'inherit' }}>
-                   {project.title}
-                 </h4>
-                 <div className="space-y-6">
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                     <div className="space-y-1">
-                       <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Problem Statement</p>
-                       <p className="text-sm font-medium leading-relaxed opacity-70">{project.problem}</p>
-                     </div>
-                     <div className="space-y-1">
-                       <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Intervention (PDSA)</p>
-                       <p className="text-sm font-medium leading-relaxed opacity-70">{project.intervention}</p>
-                     </div>
-                   </div>
-                   <div className="pt-4 border-t border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style={{ borderColor: isDark ? '#222' : '#F9F9F9' }}>
-                     <div className="space-y-1">
-                       <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Process Metric</p>
-                       <p className="text-xs font-bold">{project.metric}</p>
-                     </div>
-                     <div className="bg-green-50 px-4 py-2 rounded-full border border-green-100 flex items-center gap-2" style={{ backgroundColor: isDark ? '#062010' : '#F0FDF4', borderColor: isDark ? '#064e3b' : '#DCFCE7' }}>
-                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                       <span className="text-xs font-black text-green-700 uppercase tracking-widest" style={{ color: isDark ? '#4ade80' : '#15803d' }}>{project.result}</span>
-                     </div>
-                   </div>
-                 </div>
-               </div>
-             ))}
-           </div>
-        </div>
+        {userData.showQiProjects && (
+          <div className="mb-16 space-y-8 text-left px-2 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 text-center mb-6">Clinical Integration Portfolio</h3>
+            <div className="grid grid-cols-1 gap-6">
+              {projects.map((project, idx) => (
+                <div 
+                  key={idx}
+                  className="p-8 rounded-[2.5rem] bg-white border border-gray-100 shadow-sm transition-all duration-500 overflow-hidden relative"
+                  style={{ 
+                      backgroundColor: isDark ? '#111' : '#FFF',
+                      borderColor: isDark ? '#222' : '#F1F1F1'
+                  }}
+                >
+                  <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: theme.accentColor }}></div>
+                  <h4 className="font-black text-xl mb-6 tracking-tight" style={{ color: isBold ? theme.accentColor : 'inherit' }}>
+                    {project.title}
+                  </h4>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Problem Statement</p>
+                        <p className="text-sm font-medium leading-relaxed opacity-70">{project.problem}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Intervention (PDSA)</p>
+                        <p className="text-sm font-medium leading-relaxed opacity-70">{project.intervention}</p>
+                      </div>
+                    </div>
+                    <div className="pt-4 border-t border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style={{ borderColor: isDark ? '#222' : '#F9F9F9' }}>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Process Metric</p>
+                        <p className="text-xs font-bold">{project.metric}</p>
+                      </div>
+                      <div className="bg-green-50 px-4 py-2 rounded-full border border-green-100 flex items-center gap-2" style={{ backgroundColor: isDark ? '#062010' : '#F0FDF4', borderColor: isDark ? '#064e3b' : '#DCFCE7' }}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                        <span className="text-xs font-black text-green-700 uppercase tracking-widest" style={{ color: isDark ? '#4ade80' : '#15803d' }}>{project.result}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* CV Highlights Section */}
         <div className="mb-16 space-y-6 text-left px-2">

@@ -74,6 +74,7 @@ export default function Dashboard() {
         bookingUrl: profile.bookingUrl || "",
         cvHighlights: profile.cvHighlights || [],
         qiProjects: profile.qiProjects || [],
+        showQiProjects: profile.showQiProjects || false,
         links: profile.links,
         designPrefs: profile.designPrefs,
         isPremium: profile.isPremium
@@ -92,6 +93,15 @@ export default function Dashboard() {
     setProfile({ ...profile, isPremium: newStatus });
     try {
       await updateDoc(doc(db, "users", profile.uid), { isPremium: newStatus });
+    } catch (e) {}
+  };
+
+  const toggleQI = async () => {
+    if (!profile) return;
+    const newStatus = !profile.showQiProjects;
+    setProfile({ ...profile, showQiProjects: newStatus });
+    try {
+      await updateDoc(doc(db, "users", profile.uid), { showQiProjects: newStatus });
     } catch (e) {}
   };
 
@@ -222,7 +232,18 @@ export default function Dashboard() {
             {/* Clinical Integration (QI Projects) Section */}
             <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
               <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5] flex justify-between items-center">
-                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Clinical Integration: QI Portfolio (A3/PDSA)</h2>
+                <div className="flex items-center gap-4">
+                  <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Clinical Integration: QI Portfolio (A3/PDSA)</h2>
+                  <div className="flex items-center gap-2">
+                    <div 
+                      onClick={toggleQI}
+                      className={`w-8 h-4 rounded-full relative cursor-pointer transition-colors duration-200 ${profile.showQiProjects ? 'bg-green-500' : 'bg-gray-300'}`}
+                    >
+                      <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all duration-200 ${profile.showQiProjects ? 'left-[1.15rem]' : 'left-0.5'}`}></div>
+                    </div>
+                    <span className="text-[8px] font-black uppercase text-gray-400">{profile.showQiProjects ? 'Public' : 'Hidden'}</span>
+                  </div>
+                </div>
                 {(profile.qiProjects || []).length < 3 && (
                   <button onClick={addQIProject} className="text-[10px] font-black text-blue-600 uppercase tracking-widest">+ New A3 Record</button>
                 )}
