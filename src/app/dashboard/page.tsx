@@ -108,6 +108,14 @@ export default function Dashboard() {
     }
   };
 
+  const updateDesign = (field: keyof DesignPrefs, value: string) => {
+    if (!profile) return;
+    setProfile({
+      ...profile,
+      designPrefs: { ...profile.designPrefs, [field]: value }
+    });
+  };
+
   const addCVHighlight = () => {
     if (!profile) return;
     const currentHighlights = profile.cvHighlights || [];
