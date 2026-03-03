@@ -10,10 +10,17 @@ interface Props {
 
 export default function SaveContactButton({ user, accentColor, isBold }: Props) {
   const downloadVCard = () => {
+    // Split displayName into first and last name for structured 'N' field
+    const nameParts = user.displayName.trim().split(/\s+/);
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
+    const middleNames = nameParts.length > 2 ? nameParts.slice(1, -1).join(" ") : "";
+
     const vCard = [
       "BEGIN:VCARD",
       "VERSION:3.0",
       `FN:${user.displayName}`,
+      `N:${lastName};${firstName};${middleNames};;`, // Structured Name field
       user.jobTitle ? `TITLE:${user.jobTitle}` : "",
       user.company ? `ORG:${user.company}` : "",
       user.phone ? `TEL;TYPE=CELL:${user.phone}` : "",
