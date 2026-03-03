@@ -45,7 +45,7 @@ export default async function ProfilePage({ params }: PageProps) {
     return url.startsWith("http") ? url : `https://${url}`;
   };
 
-  // PLACEHOLDER DATA FOR MEDICAL QUALITY IMPROVEMENT
+  // CV HIGHLIGHTS PLACEHOLDERS
   const highlights = (userData.cvHighlights && userData.cvHighlights.length > 0) 
     ? userData.cvHighlights 
     : [
@@ -58,11 +58,19 @@ export default async function ProfilePage({ params }: PageProps) {
           title: "Lean Six Sigma: Surgical Efficiency",
           description: "Streamlined pre-operative workflows in a tertiary care center, saving 45 minutes per surgical case.",
           link: "https://example.com/lean-medical"
-        },
+        }
+      ];
+
+  // QI PROJECTS PLACEHOLDERS
+  const projects = (userData.qiProjects && userData.qiProjects.length > 0)
+    ? userData.qiProjects
+    : [
         {
-          title: "Patient Safety & EMR Integration",
-          description: "Led the digital integration of automated medication reconciliation systems for high-acuity wards.",
-          link: "https://example.com/emr-safety"
+          title: "Handover Error Mitigation",
+          problem: "Communication gaps during shift changes leading to medication reconciliation errors.",
+          intervention: "Standardized SBAR protocol implemented across 4 surgical wards.",
+          metric: "Incidence of reconciliation errors per 1000 bed days.",
+          result: "42% reduction in reported errors within first quarter."
         }
       ];
 
@@ -76,8 +84,8 @@ export default async function ProfilePage({ params }: PageProps) {
       }}
     >
       <AnalyticsTracker uid={uid} />
-      <div className="max-w-xl w-full mt-8 sm:mt-12 text-center animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out">
-        {/* QR Code Section at Top (Requested) */}
+      <div className="max-w-2xl w-full mt-8 sm:mt-12 text-center animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out">
+        {/* QR Code Section at Top */}
         <div className="mb-12">
           <ProfileQR uid={uid} />
         </div>
@@ -128,16 +136,60 @@ export default async function ProfilePage({ params }: PageProps) {
                }}
              >
                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v12a2 2 0 002 2z" />
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                </svg>
                Schedule Meeting
              </a>
            )}
         </div>
 
+        {/* Clinical Integration (QI Projects) Section */}
+        <div className="mb-16 space-y-8 text-left px-2">
+           <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 text-center mb-6">Clinical Integration Portfolio</h3>
+           <div className="grid grid-cols-1 gap-6">
+             {projects.map((project, idx) => (
+               <div 
+                 key={idx}
+                 className="p-8 rounded-[2.5rem] bg-white border border-gray-100 shadow-sm transition-all duration-500 overflow-hidden relative"
+                 style={{ 
+                    backgroundColor: isDark ? '#111' : '#FFF',
+                    borderColor: isDark ? '#222' : '#F1F1F1'
+                 }}
+               >
+                 <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: theme.accentColor }}></div>
+                 <h4 className="font-black text-xl mb-6 tracking-tight" style={{ color: isBold ? theme.accentColor : 'inherit' }}>
+                   {project.title}
+                 </h4>
+                 <div className="space-y-6">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                     <div className="space-y-1">
+                       <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Problem Statement</p>
+                       <p className="text-sm font-medium leading-relaxed opacity-70">{project.problem}</p>
+                     </div>
+                     <div className="space-y-1">
+                       <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Intervention (PDSA)</p>
+                       <p className="text-sm font-medium leading-relaxed opacity-70">{project.intervention}</p>
+                     </div>
+                   </div>
+                   <div className="pt-4 border-t border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style={{ borderColor: isDark ? '#222' : '#F9F9F9' }}>
+                     <div className="space-y-1">
+                       <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Process Metric</p>
+                       <p className="text-xs font-bold">{project.metric}</p>
+                     </div>
+                     <div className="bg-green-50 px-4 py-2 rounded-full border border-green-100 flex items-center gap-2" style={{ backgroundColor: isDark ? '#062010' : '#F0FDF4', borderColor: isDark ? '#064e3b' : '#DCFCE7' }}>
+                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                       <span className="text-xs font-black text-green-700 uppercase tracking-widest" style={{ color: isDark ? '#4ade80' : '#15803d' }}>{project.result}</span>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             ))}
+           </div>
+        </div>
+
         {/* CV Highlights Section */}
         <div className="mb-16 space-y-6 text-left px-2">
-           <h3 className="text-xs font-black uppercase tracking-[0.3em] opacity-30 ml-2 mb-4 text-center">Core Achievements</h3>
+           <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 text-center mb-6">Core Achievements</h3>
            <div className="grid grid-cols-1 gap-4">
              {highlights.map((item, idx) => (
                <a 
@@ -145,7 +197,7 @@ export default async function ProfilePage({ params }: PageProps) {
                  href={formatUrl(item.link)}
                  target="_blank"
                  rel="noopener noreferrer"
-                 className="group p-6 rounded-[2.5rem] bg-white border border-gray-100 shadow-sm hover:shadow-2xl hover:scale-[1.02] transition-all duration-500"
+                 className="group p-6 rounded-[2rem] bg-white border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500"
                  style={{ 
                     backgroundColor: isDark ? '#111' : '#FFF',
                     borderColor: isDark ? '#222' : '#F1F1F1'
@@ -153,7 +205,7 @@ export default async function ProfilePage({ params }: PageProps) {
                >
                  <div className="flex items-start justify-between gap-4">
                    <div className="space-y-2">
-                     <h4 className="font-black text-lg sm:text-xl leading-tight" style={{ color: isBold ? theme.accentColor : 'inherit' }}>
+                     <h4 className="font-black text-lg leading-tight" style={{ color: isBold ? theme.accentColor : 'inherit' }}>
                        {item.title}
                      </h4>
                      <p className="text-sm font-medium opacity-50 leading-relaxed">

@@ -6,7 +6,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/navigation";
-import { UserProfile, Link as ProfileLink, DesignPrefs, CVHighlight } from "@/lib/models";
+import { UserProfile, Link as ProfileLink, DesignPrefs, CVHighlight, QIProject } from "@/lib/models";
 import Link from "next/link";
 import { QRCodeCanvas } from "qrcode.react";
 
@@ -73,6 +73,7 @@ export default function Dashboard() {
         avatarUrl: profile.avatarUrl || "",
         bookingUrl: profile.bookingUrl || "",
         cvHighlights: profile.cvHighlights || [],
+        qiProjects: profile.qiProjects || [],
         links: profile.links,
         designPrefs: profile.designPrefs,
         isPremium: profile.isPremium
@@ -111,6 +112,26 @@ export default function Dashboard() {
     const newH = [...profile.cvHighlights];
     newH[index] = { ...newH[index], [field]: value };
     setProfile({ ...profile, cvHighlights: newH });
+  };
+
+  const addQIProject = () => {
+    if (!profile) return;
+    const current = profile.qiProjects || [];
+    if (current.length >= 3) return;
+    setProfile({ ...profile, qiProjects: [...current, { title: "", problem: "", intervention: "", metric: "", result: "" }] });
+  };
+
+  const updateQIProject = (index: number, field: keyof QIProject, value: string) => {
+    if (!profile || !profile.qiProjects) return;
+    const newP = [...profile.qiProjects];
+    newP[index] = { ...newP[index], [field]: value };
+    setProfile({ ...profile, qiProjects: newP });
+  };
+
+  const removeQIProject = (index: number) => {
+    if (!profile || !profile.qiProjects) return;
+    const newP = profile.qiProjects.filter((_, i) => i !== index);
+    setProfile({ ...profile, qiProjects: newP });
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black uppercase tracking-widest text-xs">Initializing Session...</div>;
@@ -195,6 +216,47 @@ export default function Dashboard() {
                     <input type="tel" value={profile.phone || ""} onChange={(e) => setProfile({...profile, phone: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" />
                   </div>
                 </div>
+              </div>
+            </section>
+
+            {/* Clinical Integration (QI Projects) Section */}
+            <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5] flex justify-between items-center">
+                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Clinical Integration: QI Portfolio (A3/PDSA)</h2>
+                {(profile.qiProjects || []).length < 3 && (
+                  <button onClick={addQIProject} className="text-[10px] font-black text-blue-600 uppercase tracking-widest">+ New A3 Record</button>
+                )}
+              </div>
+              <div className="p-8 space-y-8">
+                {(profile.qiProjects || []).map((p, i) => (
+                  <div key={i} className="p-6 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg space-y-4 relative group">
+                    <button onClick={() => removeQIProject(i)} className="absolute top-4 right-4 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                    <input placeholder="Project Title (e.g. Reduction in Handover Errors)" value={p.title} onChange={(e) => updateQIProject(i, 'title', e.target.value)} className="w-full bg-transparent font-bold text-lg outline-none" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase text-gray-400">The Problem</label>
+                        <textarea placeholder="Root cause / gap analysis..." value={p.problem} onChange={(e) => updateQIProject(i, 'problem', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm outline-none resize-none" rows={2} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase text-gray-400">Intervention (PDSA)</label>
+                        <textarea placeholder="Change implemented..." value={p.intervention} onChange={(e) => updateQIProject(i, 'intervention', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm outline-none resize-none" rows={2} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase text-gray-400">Process Metric</label>
+                        <input placeholder="How was it measured?" value={p.metric} onChange={(e) => updateQIProject(i, 'metric', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm outline-none" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase text-gray-400">The Result</label>
+                        <input placeholder="Outcome achieved..." value={p.result} onChange={(e) => updateQIProject(i, 'result', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm outline-none font-bold text-green-600" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {(profile.qiProjects || []).length === 0 && (
+                  <div className="text-center py-12 text-gray-300 font-bold uppercase tracking-widest text-[10px]">No clinical records indexed</div>
+                )}
               </div>
             </section>
 

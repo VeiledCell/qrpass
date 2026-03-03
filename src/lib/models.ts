@@ -9,6 +9,14 @@ export interface CVHighlight {
   link: string;
 }
 
+export interface QIProject {
+  title: string;
+  problem: string;
+  intervention: string;
+  metric: string;
+  result: string;
+}
+
 export interface DesignPrefs {
   theme: 'minimal' | 'bold' | 'dark';
   accentColor: string;
@@ -25,6 +33,7 @@ export interface UserProfile {
   avatarUrl?: string;
   bookingUrl?: string;
   cvHighlights?: CVHighlight[];
+  qiProjects?: QIProject[];
   links: Link[];
   isPremium: boolean;
   viewCount?: number;
