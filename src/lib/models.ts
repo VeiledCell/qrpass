@@ -11,7 +11,7 @@ export interface CVHighlight {
 
 export interface Encounter {
   id: string;
-  scannedUserId?: string;
+  scannedUserId?: string | null;
   timestamp: Date;
   location: {
     lat: number;
