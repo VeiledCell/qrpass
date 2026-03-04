@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { UserProfile, Link as ProfileLink, DesignPrefs, CVHighlight, QIProject } from "@/lib/models";
 import Link from "next/link";
 import ProfileQRCode from "@/components/ProfileQRCode";
+import EncountersDashboard from "@/components/EncountersDashboard";
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pmidString, setPmidString] = useState("");
+  const [activeTab, setActiveTab] = useState<'editor' | 'encounters'>('editor');
   const router = useRouter();
 
   useEffect(() => {
@@ -67,9 +69,7 @@ export default function Dashboard() {
   const handleSave = async () => {
     if (!profile) return;
     setSaving(true);
-    
     const pubmedIds = pmidString.split(",").map(id => id.trim()).filter(id => id !== "");
-
     try {
       await updateDoc(doc(db, "users", profile.uid), {
         displayName: profile.displayName,
@@ -154,7 +154,7 @@ export default function Dashboard() {
     setProfile({ ...profile, qiProjects: newP });
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-black uppercase tracking-widest text-xs">Initializing Session...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-black uppercase tracking-widest text-xs bg-white text-black">Initializing Session...</div>;
   if (!profile) return null;
 
   const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/u/${profile.uid}`;
@@ -177,207 +177,160 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* Analytics Widget Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Profile Engagements</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-5xl font-black tracking-tighter text-[#1A1C1E]">{profile.viewCount || 0}</span>
-              <span className="text-green-500 font-bold text-xs uppercase tracking-widest">+ Live</span>
-            </div>
-          </div>
-          <div className="bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Membership Status</p>
-            <div className="flex items-center gap-3">
-              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${profile.isPremium ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
-                {profile.isPremium ? 'Level: PRO' : 'Level: BASIC'}
-              </span>
-            </div>
-          </div>
-          <div className="bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">VCard Distribution</p>
-            <span className="text-3xl font-bold tracking-tight text-[#1A1C1E]">ENABLED</span>
-          </div>
+        {/* Tab Navigation */}
+        <div className="flex bg-white border border-[#E1E3E5] p-1 rounded-xl w-full max-w-md mx-auto sm:mx-0">
+          <button 
+            onClick={() => setActiveTab('editor')}
+            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${activeTab === 'editor' ? 'bg-[#1A1C1E] text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            Profile Editor
+          </button>
+          <button 
+            onClick={() => setActiveTab('encounters')}
+            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${activeTab === 'encounters' ? 'bg-[#1A1C1E] text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            CRM encounters
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
-            {/* Core Identity Section */}
-            <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
-              <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5]">
-                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Identity & Credentials</h2>
+        {activeTab === 'editor' ? (
+          <div className="space-y-10 animate-in fade-in duration-700">
+            {/* Analytics Widget Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Profile Engagements</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-5xl font-black tracking-tighter text-[#1A1C1E]">{profile.viewCount || 0}</span>
+                  <span className="text-green-500 font-bold text-xs uppercase tracking-widest">+ Live</span>
+                </div>
               </div>
-              <div className="p-8 space-y-8">
-                <div className="flex items-center gap-8">
-                  <div className="relative w-28 h-28 bg-[#F1F3F5] rounded-xl overflow-hidden border-2 border-white shadow-md">
-                    {profile.avatarUrl ? <img src={profile.avatarUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-gray-200">{profile.displayName.charAt(0)}</div>}
+              <div className="bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Membership Status</p>
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${profile.isPremium ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                    {profile.isPremium ? 'Level: PRO' : 'Level: BASIC'}
+                  </span>
+                </div>
+              </div>
+              <div className="bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">VCard Distribution</p>
+                <span className="text-3xl font-bold tracking-tight text-[#1A1C1E]">ENABLED</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-8">
+                {/* Identity Section */}
+                <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5]"><h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Identity & Credentials</h2></div>
+                  <div className="p-8 space-y-8">
+                    <div className="flex items-center gap-8">
+                      <div className="relative w-28 h-28 bg-[#F1F3F5] rounded-xl overflow-hidden border-2 border-white shadow-md">
+                        {profile.avatarUrl ? <img src={profile.avatarUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-gray-200">{profile.displayName.charAt(0)}</div>}
+                      </div>
+                      <div className="space-y-4">
+                        <input type="file" accept="image/*" onChange={handleImageUpload} className="block text-[10px] font-black uppercase tracking-widest file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-[#1A1C1E] file:text-white hover:file:bg-black cursor-pointer" />
+                        <p className="text-[10px] text-gray-400 font-medium">Supported: JPG, PNG (Max 5MB)</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Full Name</label>
+                        <input type="text" value={profile.displayName} onChange={(e) => setProfile({...profile, displayName: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Clinical/Job Title</label>
+                        <input type="text" value={profile.jobTitle || ""} onChange={(e) => setProfile({...profile, jobTitle: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Organization</label>
+                        <input type="text" value={profile.company || ""} onChange={(e) => setProfile({...profile, company: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Phone</label>
+                        <input type="tel" value={profile.phone || ""} onChange={(e) => setProfile({...profile, phone: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Email</label>
+                        <input type="email" value={profile.email || ""} onChange={(e) => setProfile({...profile, email: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Scheduling Link</label>
+                        <input type="text" value={profile.bookingUrl || ""} onChange={(e) => setProfile({...profile, bookingUrl: e.target.value})} placeholder="https://calendly.com/yourname" className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" />
+                      </div>
+                    </div>
                   </div>
+                </section>
+
+                {/* API Integrations */}
+                <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5]"><h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Live API Integrations</h2></div>
+                  <div className="p-8 space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">GitHub Username</label>
+                        <input type="text" value={profile.githubUsername || ""} onChange={(e) => setProfile({...profile, githubUsername: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">PubMed IDs</label>
+                        <input type="text" value={pmidString} onChange={(e) => setPmidString(e.target.value)} placeholder="34567890, 12345678" className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* QI Projects */}
+                <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5] flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                      <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">QI Portfolio (A3/PDSA)</h2>
+                      <div onClick={toggleQI} className={`w-8 h-4 rounded-full relative cursor-pointer transition-colors ${profile.showQiProjects ? 'bg-green-500' : 'bg-gray-300'}`}>
+                        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${profile.showQiProjects ? 'left-[1.15rem]' : 'left-0.5'}`}></div>
+                      </div>
+                    </div>
+                    {(profile.qiProjects || []).length < 3 && <button onClick={addQIProject} className="text-[10px] font-black text-blue-600 uppercase tracking-widest">+ New A3 Record</button>}
+                  </div>
+                  <div className="p-8 space-y-8">
+                    {(profile.qiProjects || []).map((p, i) => (
+                      <div key={i} className="p-6 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg space-y-4 relative group">
+                        <button onClick={() => removeQIProject(i)} className="absolute top-4 right-4 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                        <input placeholder="Project Title" value={p.title} onChange={(e) => updateQIProject(i, 'title', e.target.value)} className="w-full bg-transparent font-bold text-lg outline-none" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <textarea placeholder="The Problem" value={p.problem} onChange={(e) => updateQIProject(i, 'problem', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm outline-none resize-none" rows={2} />
+                          <textarea placeholder="Intervention" value={p.intervention} onChange={(e) => updateQIProject(i, 'intervention', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm outline-none resize-none" rows={2} />
+                          <input placeholder="Process Metric" value={p.metric} onChange={(e) => updateQIProject(i, 'metric', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm outline-none" />
+                          <input placeholder="The Result" value={p.result} onChange={(e) => updateQIProject(i, 'result', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm outline-none font-bold text-green-600" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+
+              {/* Sidebar */}
+              <div className="space-y-8">
+                <section className="bg-[#1A1C1E] text-white p-10 rounded-xl shadow-lg flex flex-col items-center text-center space-y-6">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50">Distribution QR</p>
+                  <div className="p-4 bg-white rounded-lg shadow-2xl"><ProfileQRCode profileUrl={publicUrl} photoUrl={profile.avatarUrl} size={180} /></div>
+                  <button onClick={handleSave} disabled={saving} className="w-full py-4 bg-blue-600 text-white rounded-lg font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-xl">{saving ? 'Syncing...' : 'COMMIT ALL UPDATES'}</button>
+                </section>
+                <section className="bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm space-y-6">
+                  <h2 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Visual Interface</h2>
                   <div className="space-y-4">
-                    <input type="file" accept="image/*" onChange={handleImageUpload} className="block text-[10px] font-black uppercase tracking-widest file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-[#1A1C1E] file:text-white hover:file:bg-black cursor-pointer" />
-                    <p className="text-[10px] text-gray-400 font-medium">Supported: JPG, PNG (Max 5MB)</p>
+                    <select disabled={!profile.isPremium} value={profile.designPrefs.theme} onChange={(e) => updateDesign('theme', e.target.value)} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-[10px] uppercase appearance-none">
+                      <option value="minimal">Minimalist</option><option value="bold">High Contrast</option><option value="dark">Midnight</option>
+                    </select>
+                    <button onClick={togglePremium} className="w-full py-3 bg-gray-100 text-gray-500 rounded-lg font-black text-[10px] uppercase tracking-widest">{profile.isPremium ? 'PRO LICENCE ACTIVE' : 'UPGRADE SYSTEM'}</button>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Full Name</label>
-                    <input type="text" value={profile.displayName} onChange={(e) => setProfile({...profile, displayName: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Clinical/Job Title</label>
-                    <input type="text" value={profile.jobTitle || ""} onChange={(e) => setProfile({...profile, jobTitle: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Organization</label>
-                    <input type="text" value={profile.company || ""} onChange={(e) => setProfile({...profile, company: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Phone</label>
-                    <input type="tel" value={profile.phone || ""} onChange={(e) => setProfile({...profile, phone: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Email</label>
-                    <input type="email" value={profile.email || ""} onChange={(e) => setProfile({...profile, email: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Scheduling Link (e.g. Calendly)</label>
-                    <input type="text" value={profile.bookingUrl || ""} onChange={(e) => setProfile({...profile, bookingUrl: e.target.value})} placeholder="https://calendly.com/yourname" className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" />
-                  </div>
-                </div>
+                </section>
               </div>
-            </section>
-
-            {/* Live Data Integrations */}
-            <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
-              <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5]">
-                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Live API Integrations</h2>
-              </div>
-              <div className="p-8 space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">GitHub Username</label>
-                    <input 
-                      type="text" 
-                      value={profile.githubUsername || ""} 
-                      onChange={(e) => setProfile({...profile, githubUsername: e.target.value})} 
-                      placeholder="e.g. octocat" 
-                      className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" 
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">PubMed IDs (Comma separated)</label>
-                    <input 
-                      type="text" 
-                      value={pmidString} 
-                      onChange={(e) => setPmidString(e.target.value)} 
-                      placeholder="e.g. 34567890, 12345678" 
-                      className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none focus:border-[#1A1C1E]" 
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Clinical Integration (QI Projects) Section */}
-            <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
-              <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5] flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Clinical Integration: QI Portfolio (A3/PDSA)</h2>
-                  <div className="flex items-center gap-2">
-                    <div 
-                      onClick={toggleQI}
-                      className={`w-8 h-4 rounded-full relative cursor-pointer transition-colors duration-200 ${profile.showQiProjects ? 'bg-green-500' : 'bg-gray-300'}`}
-                    >
-                      <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all duration-200 ${profile.showQiProjects ? 'left-[1.15rem]' : 'left-0.5'}`}></div>
-                    </div>
-                    <span className="text-[8px] font-black uppercase text-gray-400">{profile.showQiProjects ? 'Public' : 'Hidden'}</span>
-                  </div>
-                </div>
-                {(profile.qiProjects || []).length < 3 && (
-                  <button onClick={addQIProject} className="text-[10px] font-black text-blue-600 uppercase tracking-widest">+ New A3 Record</button>
-                )}
-              </div>
-              <div className="p-8 space-y-8">
-                {(profile.qiProjects || []).map((p, i) => (
-                  <div key={i} className="p-6 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg space-y-4 relative group">
-                    <button onClick={() => removeQIProject(i)} className="absolute top-4 right-4 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                    <input placeholder="Project Title (e.g. Reduction in Handover Errors)" value={p.title} onChange={(e) => updateQIProject(i, 'title', e.target.value)} className="w-full bg-transparent font-bold text-lg outline-none" />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-gray-400">The Problem</label>
-                        <textarea placeholder="Root cause / gap analysis..." value={p.problem} onChange={(e) => updateQIProject(i, 'problem', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm outline-none resize-none" rows={2} />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-gray-400">Intervention (PDSA)</label>
-                        <textarea placeholder="Change implemented..." value={p.intervention} onChange={(e) => updateQIProject(i, 'intervention', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm outline-none resize-none" rows={2} />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-gray-400">Process Metric</label>
-                        <input placeholder="How was it measured?" value={p.metric} onChange={(e) => updateQIProject(i, 'metric', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm outline-none" />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-gray-400">The Result</label>
-                        <input placeholder="Outcome achieved..." value={p.result} onChange={(e) => updateQIProject(i, 'result', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm outline-none font-bold text-green-600" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {(profile.qiProjects || []).length === 0 && (
-                  <div className="text-center py-12 text-gray-300 font-bold uppercase tracking-widest text-[10px]">No clinical records indexed</div>
-                )}
-              </div>
-            </section>
-
-            {/* Achievements Section */}
-            <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
-              <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5] flex justify-between items-center">
-                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Core Achievements & CV Highlights</h2>
-                <button onClick={addCVHighlight} className="text-[10px] font-black text-blue-600 uppercase tracking-widest">+ Add Record</button>
-              </div>
-              <div className="p-8 space-y-6">
-                {(profile.cvHighlights || []).map((h, i) => (
-                  <div key={i} className="p-6 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg space-y-4">
-                    <input placeholder="Title of Achievement" value={h.title} onChange={(e) => updateCVHighlight(i, 'title', e.target.value)} className="w-full bg-transparent font-bold text-lg outline-none" />
-                    <textarea placeholder="Brief description..." value={h.description} onChange={(e) => updateCVHighlight(i, 'description', e.target.value)} className="w-full bg-transparent text-sm text-gray-500 outline-none resize-none" rows={2} />
-                    <input placeholder="Evidence Link (URL)" value={h.link} onChange={(e) => updateCVHighlight(i, 'link', e.target.value)} className="w-full bg-transparent text-xs text-blue-500 font-bold outline-none" />
-                  </div>
-                ))}
-              </div>
-            </section>
+            </div>
           </div>
-
-          <div className="space-y-8">
-            {/* QR Systems Sidebar */}
-            <section className="bg-[#1A1C1E] text-white p-10 rounded-xl shadow-lg flex flex-col items-center text-center space-y-6">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50">Distribution QR</p>
-              <div className="p-4 bg-white rounded-lg shadow-2xl">
-                <ProfileQRCode profileUrl={publicUrl} photoUrl={profile.avatarUrl} size={180} />
-              </div>
-              <button onClick={handleSave} disabled={saving} className="w-full py-4 bg-blue-600 text-white rounded-lg font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-xl">{saving ? 'Syncing...' : 'COMMIT ALL UPDATES'}</button>
-            </section>
-
-            {/* Design System Sidebar */}
-            <section className="bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm space-y-6">
-              <h2 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Visual Interface</h2>
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black tracking-widest uppercase text-gray-400">Style Profile</label>
-                  <select disabled={!profile.isPremium} value={profile.designPrefs.theme} onChange={(e) => updateDesign('theme', e.target.value)} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-[10px] uppercase appearance-none">
-                    <option value="minimal">Minimalist</option><option value="bold">High Contrast</option><option value="dark">Midnight</option>
-                  </select>
-                </div>
-                <button onClick={togglePremium} className="w-full py-3 bg-gray-100 text-gray-500 rounded-lg font-black text-[10px] uppercase tracking-widest">
-                  {profile.isPremium ? 'PRO LICENCE ACTIVE' : 'UPGRADE SYSTEM'}
-                </button>
-              </div>
-            </section>
-          </div>
-        </div>
+        ) : (
+          <EncountersDashboard uid={profile.uid} />
+        )}
       </div>
     </main>
   );
