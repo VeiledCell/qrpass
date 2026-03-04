@@ -17,18 +17,20 @@ export default function FrictionlessCaptureModal({ isOpen, onClose, scannedUserI
   const { captureContext, loading: capturingContext } = useAmbientContext();
   const [context, setContext] = useState<any>(null);
   const [selectedChips, setSelectedChips] = useState<string[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [transcription, setTranscription] = useState("");
-  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     if (isOpen) {
       handleCaptureContext();
+      setupSpeechRecognition();
     }
+    return () => {
+      if (recognitionRef.current) recognitionRef.current.stop();
+    };
   }, [isOpen]);
 
   const handleCaptureContext = async () => {
@@ -36,63 +38,53 @@ export default function FrictionlessCaptureModal({ isOpen, onClose, scannedUserI
     setContext(data);
   };
 
+  const setupSpeechRecognition = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event: any) => {
+        let currentTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          currentTranscript += event.results[i][0].transcript;
+        }
+        setTranscript(prev => {
+          // If we're ending a result, we'll append. This is a simplified real-time view.
+          return currentTranscript; 
+        });
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Speech Recognition Error:", event.error);
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      setTranscript(""); // Clear previous for new session
+      recognitionRef.current?.start();
+      setIsListening(true);
+    }
+  };
+
   const toggleChip = (chip: string) => {
     setSelectedChips(prev => 
       prev.includes(chip) ? prev.filter(c => c !== chip) : [...prev, chip]
     );
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        handleTranscription(audioBlob);
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch (err) {
-      console.error("Mic Error:", err);
-      alert("Microphone access denied.");
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  };
-
-  const handleTranscription = async (blob: Blob) => {
-    setIsTranscribing(true);
-    const formData = new FormData();
-    formData.append("file", blob);
-
-    try {
-      const res = await fetch("/api/transcribe", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.text) {
-        setTranscription(prev => prev + (prev ? " " : "") + data.text);
-      }
-    } catch (err) {
-      console.error("Transcription Failed:", err);
-    } finally {
-      setIsTranscribing(false);
-    }
   };
 
   const handleSave = async () => {
@@ -105,12 +97,12 @@ export default function FrictionlessCaptureModal({ isOpen, onClose, scannedUserI
         scannedUserId,
         location: context?.location || { lat: 0, lng: 0, city: "Unknown" },
         contextChips: selectedChips,
-        transcription: transcription.trim() || undefined,
+        transcription: transcript.trim() || undefined,
       });
       onClose();
       // Reset state
       setSelectedChips([]);
-      setTranscription("");
+      setTranscript("");
       setContext(null);
     } catch (err) {
       alert("Failed to save encounter.");
@@ -165,44 +157,42 @@ export default function FrictionlessCaptureModal({ isOpen, onClose, scannedUserI
             </div>
           </div>
 
-          {/* Voice Input */}
+          {/* Voice Input (Web Speech API) */}
           <div className="space-y-4 text-center">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Voice Dictation</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Voice Dictation (Native)</p>
             <div className="flex flex-col items-center gap-4">
               <button
-                onMouseDown={startRecording}
-                onMouseUp={stopRecording}
-                onTouchStart={startRecording}
-                onTouchEnd={stopRecording}
+                onClick={toggleListening}
                 className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  isRecording 
+                  isListening 
                   ? 'bg-red-500 scale-110 shadow-[0_0_30px_rgba(239,68,68,0.5)]' 
                   : 'bg-black shadow-xl hover:scale-105'
                 }`}
               >
-                {isRecording ? (
+                {isListening ? (
                   <div className="flex gap-1">
-                    <span className="w-1 h-4 bg-white animate-bounce"></span>
-                    <span className="w-1 h-6 bg-white animate-bounce delay-75"></span>
-                    <span className="w-1 h-4 bg-white animate-bounce delay-150"></span>
+                    <span className="w-1 h-4 bg-white animate-pulse"></span>
+                    <span className="w-1 h-6 bg-white animate-pulse delay-75"></span>
+                    <span className="w-1 h-4 bg-white animate-pulse delay-150"></span>
                   </div>
                 ) : (
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 2 9 18zm0 0v-8" /></svg>
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                 )}
               </button>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
-                {isRecording ? "Listening..." : "Hold to Record Notes"}
+                {isListening ? "Listening... Tap to Stop" : "Tap to Dictate Notes"}
               </p>
             </div>
 
-            {/* Transcription Preview */}
-            {(transcription || isTranscribing) && (
-              <div className="mt-4 p-6 bg-blue-50/50 rounded-[2rem] border border-blue-100/50 text-left">
-                <p className="text-xs font-medium text-blue-900 leading-relaxed italic">
-                  {isTranscribing ? "Processing audio..." : `"${transcription}"`}
-                </p>
-              </div>
-            )}
+            {/* Real-time Transcription Area */}
+            <div className="mt-4">
+              <textarea
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                placeholder="Spoken notes will appear here..."
+                className="w-full p-6 bg-gray-50 rounded-[2rem] border-2 border-transparent focus:border-blue-100 outline-none text-xs font-medium leading-relaxed italic resize-none min-h-[100px] transition-all"
+              />
+            </div>
           </div>
 
           {/* Save Button */}
