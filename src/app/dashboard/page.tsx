@@ -53,15 +53,59 @@ export default function Dashboard() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !profile) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File is too large. Max 5MB.");
+      return;
+    }
+
     setUploading(true);
+    
     try {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      
+      const croppedBlob = await new Promise<Blob>((resolve, reject) => {
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const SIZE = 400; 
+          canvas.width = SIZE;
+          canvas.height = SIZE;
+          const ctx = canvas.getContext("2d");
+
+          let sourceX = 0;
+          let sourceY = 0;
+          let sourceWidth = img.width;
+          let sourceHeight = img.height;
+
+          if (img.width > img.height) {
+            sourceWidth = img.height;
+            sourceX = (img.width - img.height) / 2;
+          } else {
+            sourceHeight = img.width;
+            sourceY = (img.height - img.width) / 2;
+          }
+
+          ctx?.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, SIZE, SIZE);
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Canvas to Blob failed"));
+          }, "image/jpeg", 0.9);
+        };
+        img.src = objectUrl;
+      });
+
       const storageRef = ref(storage, `avatars/${profile.uid}`);
-      await uploadBytes(storageRef, file);
+      await uploadBytes(storageRef, croppedBlob);
       const url = await getDownloadURL(storageRef);
+      
       setProfile({ ...profile, avatarUrl: url });
       await updateDoc(doc(db, "users", profile.uid), { avatarUrl: url });
-    } catch (err) {
-      alert("Upload failed.");
+      URL.revokeObjectURL(objectUrl);
+      
+    } catch (err: any) {
+      console.error("SMART CROP ERROR:", err);
+      alert("Failed to process image.");
     } finally {
       setUploading(false);
     }
@@ -163,7 +207,6 @@ export default function Dashboard() {
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#1A1C1E] p-4 sm:p-10 font-sans antialiased">
       <div className="max-w-7xl mx-auto space-y-10">
-        {/* Hospital Metrics Header */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm">
           <div className="space-y-1">
             <h1 className="text-2xl font-bold tracking-tight text-[#1A1C1E]">OPERATIONS DASHBOARD</h1>
@@ -181,7 +224,6 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* Tab Navigation */}
         <div className="flex bg-white border border-[#E1E3E5] p-1 rounded-xl w-full max-w-xl mx-auto sm:mx-0">
           <button onClick={() => setActiveTab('editor')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${activeTab === 'editor' ? 'bg-[#1A1C1E] text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}>Editor</button>
           <button onClick={() => setActiveTab('encounters')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${activeTab === 'encounters' ? 'bg-[#1A1C1E] text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}>Activity Ledger</button>
@@ -190,7 +232,6 @@ export default function Dashboard() {
 
         {activeTab === 'editor' && (
           <div className="space-y-10 animate-in fade-in duration-700">
-            {/* Analytics Widget Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm space-y-2">
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Profile Engagements</p>
@@ -215,7 +256,6 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-8">
-                {/* Identity Section */}
                 <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
                   <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5]"><h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Identity & Credentials</h2></div>
                   <div className="p-8 space-y-8">
@@ -225,7 +265,7 @@ export default function Dashboard() {
                       </div>
                       <div className="space-y-4">
                         <input type="file" accept="image/*" onChange={handleImageUpload} className="block text-[10px] font-black uppercase tracking-widest file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-[#1A1C1E] file:text-white hover:file:bg-black cursor-pointer" />
-                        <p className="text-[10px] text-gray-400 font-medium">Supported: JPG, PNG (Max 5MB)</p>
+                        <p className="text-[10px] text-gray-400 font-medium">Auto-Square Crop Enabled</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -296,7 +336,6 @@ export default function Dashboard() {
                 </section>
               </div>
 
-              {/* Sidebar */}
               <div className="space-y-8">
                 <section className="bg-[#1A1C1E] text-white p-10 rounded-xl shadow-lg flex flex-col items-center text-center space-y-6">
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50">Distribution QR</p>
