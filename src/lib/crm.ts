@@ -1,5 +1,5 @@
 import { db } from "./firebase";
-import { collection, doc, setDoc, updateDoc, serverTimestamp, getDocs, query, where, orderBy, limit } from "firebase/firestore";
+import { collection, doc, setDoc, updateDoc, deleteDoc, serverTimestamp, getDocs, query, where, orderBy, limit } from "firebase/firestore";
 import { Encounter, ConnectionProfile } from "./models";
 
 /**
@@ -74,6 +74,21 @@ export async function linkEncounterToProfile(uid: string, encounterId: string, p
     return true;
   } catch (error) {
     console.error("Error linking encounter:", error);
+    throw error;
+  }
+}
+
+/**
+ * Deletes a master connection profile.
+ */
+export async function deleteConnection(uid: string, profileId: string) {
+  try {
+    const docRef = doc(db, "users", uid, "connections", profileId);
+    // Note: This doesn't un-link encounters automatically in this simple version
+    await deleteDoc(docRef);
+    return true;
+  } catch (error) {
+    console.error("Error deleting connection:", error);
     throw error;
   }
 }
