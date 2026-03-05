@@ -132,7 +132,7 @@ export default async function ProfilePage({ params }: PageProps) {
   const isPremium = userData.isPremium === true;
   const theme: DesignPrefs = isPremium && userData.designPrefs
     ? userData.designPrefs 
-    : { theme: 'minimal', accentColor: '#000000' };
+    : { theme: 'minimal', accentColor: '#000000', font: 'sans' };
 
   const isDark = theme.theme === 'dark';
   const isBold = theme.theme === 'bold';
