@@ -19,6 +19,16 @@ export default function ConnectionsDashboard({ uid }: Props) {
     fetchConnections();
   }, [uid]);
 
+  const convertToDate = (timestamp: any): Date => {
+    if (!timestamp) return new Date();
+    // Handle Timestamp instance
+    if (typeof timestamp.toDate === 'function') return timestamp.toDate();
+    // Handle plain object from cache/memory
+    if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
+    // Fallback
+    return new Date(timestamp);
+  };
+
   const fetchConnections = async () => {
     setLoading(true);
     try {
@@ -31,12 +41,11 @@ export default function ConnectionsDashboard({ uid }: Props) {
       
       const data = querySnapshot.docs.map(doc => {
         const d = doc.data();
-        console.log("Raw connection data for", doc.id, ":", d);
         return {
           ...d,
           id: doc.id,
-          createdAt: (d.createdAt as Timestamp)?.toDate() || new Date(),
-          lastEncounterAt: (d.lastEncounterAt as Timestamp)?.toDate() || new Date(),
+          createdAt: convertToDate(d.createdAt),
+          lastEncounterAt: convertToDate(d.lastEncounterAt),
         };
       }) as ConnectionProfile[];
       

@@ -21,6 +21,13 @@ export default function EncountersDashboard({ uid }: Props) {
 
   useEffect(() => { fetchEncounters(); }, [uid]);
 
+  const convertToDate = (timestamp: any): Date => {
+    if (!timestamp) return new Date();
+    if (typeof timestamp.toDate === 'function') return timestamp.toDate();
+    if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
+    return new Date(timestamp);
+  };
+
   const fetchEncounters = async () => {
     setLoading(true);
     try {
@@ -29,7 +36,7 @@ export default function EncountersDashboard({ uid }: Props) {
       const data = querySnapshot.docs.map(doc => ({
         ...doc.data(),
         id: doc.id,
-        timestamp: (doc.data().timestamp as Timestamp)?.toDate() || new Date()
+        timestamp: convertToDate(doc.data().timestamp)
       }));
       setEncounters(data);
     } catch (error) { console.error("Error fetching encounters:", error); } 
