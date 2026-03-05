@@ -47,8 +47,17 @@ export default function IdentifyEncounterModal({ isOpen, onClose, uid, encounter
     setIsProcessing(true);
     try {
       await linkEncounterToProfile(uid, encounter.id, profileId);
-      // Also update the lastEncounterAt for that profile
-      await upsertConnectionProfile(uid, { id: profileId });
+      // Update contact details if they are missing in the profile but present in the handshake
+      const existing = connections.find(c => c.id === profileId);
+      if (existing) {
+        const updates: any = { id: profileId };
+        if (!existing.email && encounter.contactEmail) updates.email = encounter.contactEmail;
+        // Merge notes if there's a reason
+        if (encounter.reason) {
+          updates.notes = (existing.notes || "") + `\n\n[Handshake Reason]: ${encounter.reason}`;
+        }
+        await upsertConnectionProfile(uid, updates);
+      }
       onSuccess();
       onClose();
     } catch (e) {
@@ -63,18 +72,24 @@ export default function IdentifyEncounterModal({ isOpen, onClose, uid, encounter
     if (!newName) return;
     setIsProcessing(true);
     try {
-      // Determine email and LinkedIn more robustly from contactInfo
-      const email = encounter.contactInfo?.includes("@") ? encounter.contactInfo : undefined;
-      const linkedIn = (encounter.contactInfo?.includes("linkedin.com") || encounter.contactInfo?.includes("http")) 
-        ? encounter.contactInfo 
-        : undefined;
+      // Robust auto-population from handshake data
+      const email = encounter.contactEmail || (encounter.contactInfo?.includes("@") ? encounter.contactInfo : undefined);
+      const phone = encounter.contactPhone || undefined;
+      const linkedIn = encounter.contactOther || (encounter.contactInfo?.includes("linkedin.com") ? encounter.contactInfo : undefined);
+      
+      let initialNotes = encounter.transcription || `Initial encounter recorded in ${encounter.location?.city || "Unknown Location"}.`;
+      if (encounter.reason) {
+        initialNotes += `\n\n[Reason for Connecting]: ${encounter.reason}`;
+      }
 
       const profileId = await upsertConnectionProfile(uid, {
         name: newName,
         email: email,
+        phone: phone,
         linkedIn: linkedIn,
-        notes: encounter.transcription || `Initial encounter recorded in ${encounter.location?.city || "Unknown Location"}.`
+        notes: initialNotes
       });
+      
       await linkEncounterToProfile(uid, encounter.id, profileId);
       onSuccess();
       onClose();
@@ -88,15 +103,15 @@ export default function IdentifyEncounterModal({ isOpen, onClose, uid, encounter
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 text-black">
+    <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 text-black text-left">
+      <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
         <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50">
           <div>
             <h3 className="text-sm font-black uppercase tracking-widest">Identify Intel Node</h3>
             <p className="text-[10px] font-bold text-gray-400 uppercase">Map interaction to professional identity</p>
           </div>
-          <button onClick={onClose} className="text-gray-300 hover:text-black transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          <button onClick={onClose} className="text-gray-400 hover:text-black transition-colors">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
@@ -105,13 +120,13 @@ export default function IdentifyEncounterModal({ isOpen, onClose, uid, encounter
           <div className="flex bg-gray-100 p-1 rounded-xl">
             <button 
               onClick={() => setMode('select')}
-              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${mode === 'select' ? 'bg-white shadow-sm' : 'text-gray-400'}`}
+              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${mode === 'select' ? 'bg-white shadow-sm text-black' : 'text-gray-400'}`}
             >
               Existing Profile
             </button>
             <button 
               onClick={() => setMode('new')}
-              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${mode === 'new' ? 'bg-white shadow-sm' : 'text-gray-400'}`}
+              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${mode === 'new' ? 'bg-white shadow-sm text-black' : 'text-gray-400'}`}
             >
               New Profile
             </button>
@@ -120,7 +135,7 @@ export default function IdentifyEncounterModal({ isOpen, onClose, uid, encounter
           {mode === 'select' ? (
             <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
               {loading ? (
-                <div className="py-10 text-center text-[10px] font-black uppercase text-gray-300">Scanning Database...</div>
+                <div className="py-10 text-center text-[10px] font-black uppercase text-gray-300 tracking-widest">Scanning Database...</div>
               ) : connections.length === 0 ? (
                 <div className="py-10 text-center text-xs font-bold text-gray-400">No profiles found. Switch to "New Profile".</div>
               ) : (
@@ -150,17 +165,25 @@ export default function IdentifyEncounterModal({ isOpen, onClose, uid, encounter
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="e.g. Dr. John Smith"
-                  className="w-full px-5 py-3 bg-gray-50 rounded-xl outline-none font-bold text-sm focus:ring-2 ring-black/5"
+                  className="w-full px-5 py-3 bg-[#F8F9FA] rounded-xl outline-none font-bold text-sm border border-transparent focus:border-black/10 transition-all text-black"
                 />
               </div>
+              <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl space-y-2">
+                <p className="text-[9px] font-black uppercase text-blue-600 tracking-widest">Intelligence Detected</p>
+                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  {encounter.contactEmail && <p className="text-gray-600 truncate">📧 {encounter.contactEmail}</p>}
+                  {encounter.contactPhone && <p className="text-gray-600 truncate">📞 {encounter.contactPhone}</p>}
+                  {encounter.reason && <p className="text-gray-600 truncate col-span-2 italic">💬 {encounter.reason.substring(0, 40)}...</p>}
+                </div>
+              </div>
               <p className="text-[9px] text-gray-400 leading-relaxed italic">
-                Creating a new profile will aggregate this encounter and future interactions under this identity node.
+                Initializing a new profile will auto-populate the email, phone, and reason fields from the handshake.
               </p>
               <button 
                 disabled={isProcessing}
-                className="w-full py-4 bg-black text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-[1.02] active:scale-95 transition-all shadow-lg"
+                className="w-full py-4 bg-[#1A1C1E] text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-black hover:scale-[1.02] active:scale-95 transition-all shadow-lg"
               >
-                {isProcessing ? "Processing..." : "Initialize Identity Profile"}
+                {isProcessing ? "Synchronizing..." : "Initialize Identity Node"}
               </button>
             </form>
           )}
