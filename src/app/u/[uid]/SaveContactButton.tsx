@@ -14,12 +14,14 @@ export default function SaveContactButton({ user, accentColor, isBold }: Props) 
 
   const imageUrlToBase64 = async (url: string): Promise<string | null> => {
     try {
+      console.log("Attempting to fetch image for vCard:", url);
       const response = await fetch(url);
+      if (!response.ok) throw new Error("Fetch failed");
       const blob = await response.blob();
       
       return new Promise((resolve) => {
         const img = new Image();
-        img.crossOrigin = "anonymous";
+        img.crossOrigin = "anonymous"; // Essential for CORS
         const objectUrl = URL.createObjectURL(blob);
         
         img.onload = () => {
@@ -45,12 +47,13 @@ export default function SaveContactButton({ user, accentColor, isBold }: Props) 
           const ctx = canvas.getContext("2d");
           ctx?.drawImage(img, 0, 0, width, height);
           
-          const dataURL = canvas.toDataURL("image/jpeg", 0.8);
+          const dataURL = canvas.toDataURL("image/jpeg", 0.7); // Slightly more compression for mobile
           URL.revokeObjectURL(objectUrl);
           resolve(dataURL.split(",")[1]);
         };
         
-        img.onerror = () => {
+        img.onerror = (e) => {
+          console.error("Image loading error - likely CORS:", e);
           URL.revokeObjectURL(objectUrl);
           resolve(null);
         };
@@ -58,7 +61,7 @@ export default function SaveContactButton({ user, accentColor, isBold }: Props) 
         img.src = objectUrl;
       });
     } catch (e) {
-      console.error("Image processing error:", e);
+      console.error("VCard Image Fetch Error (CORS?):", e);
       return null;
     }
   };
@@ -66,48 +69,39 @@ export default function SaveContactButton({ user, accentColor, isBold }: Props) 
   const downloadVCard = async () => {
     setIsGenerating(true);
     
-    // Split displayName into first and last name for structured 'N' field
     const nameParts = user.displayName.trim().split(/\s+/);
     const firstName = nameParts[0] || "";
     const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
-    const middleNames = nameParts.length > 2 ? nameParts.slice(1, -1).join(" ") : "";
 
     let photoBase64 = null;
     if (user.avatarUrl) {
       photoBase64 = await imageUrlToBase64(user.avatarUrl);
     }
 
-    // Helper to fold long lines (Required for some vCard parsers, especially iOS)
-    const foldLine = (line: string) => {
-      const MAX_LENGTH = 75;
-      let result = "";
-      for (let i = 0; i < line.length; i += MAX_LENGTH) {
-        result += line.substring(i, i + MAX_LENGTH) + "\r\n ";
-      }
-      return result.trim();
-    };
-
+    // VERSION 2.1 is significantly more reliable for iOS photo embedding
     const vCardLines = [
       "BEGIN:VCARD",
-      "VERSION:3.0",
+      "VERSION:2.1",
       `FN:${user.displayName}`,
-      `N:${lastName};${firstName};${middleNames};;`,
+      `N:${lastName};${firstName};;;`,
       user.jobTitle ? `TITLE:${user.jobTitle}` : "",
       user.company ? `ORG:${user.company}` : "",
-      user.phone ? `TEL;TYPE=CELL:${user.phone}` : "",
-      user.email ? `EMAIL;TYPE=INTERNET:${user.email}` : "",
+      user.phone ? `TEL;CELL;VOICE:${user.phone}` : "",
+      user.email ? `EMAIL;PREF;INTERNET:${user.email}` : "",
       user.bio ? `NOTE:${user.bio}` : "",
-      `URL:https://qrpass-nine-zeta.vercel.app/u/${user.uid}`,
+      `URL;WORK:https://qrpass-nine-zeta.vercel.app/u/${user.uid}`,
     ];
 
     if (photoBase64) {
-      // iOS expects the photo line to be formatted very specifically with Base64 encoding
-      vCardLines.push(`PHOTO;TYPE=JPEG;ENCODING=b:${photoBase64.replace(/\s/g, "")}`);
+      // vCard 2.1 style for Base64 photos
+      vCardLines.push(`PHOTO;JPEG;ENCODING=BASE64:`);
+      vCardLines.push(photoBase64);
+      vCardLines.push(""); // Empty line after base64 data is required by 2.1
     }
 
     vCardLines.push("END:VCARD");
 
-    const blob = new Blob([vCardLines.join("\n")], { type: "text/vcard" });
+    const blob = new Blob([vCardLines.join("\r\n")], { type: "text/vcard;charset=utf-8" });
     const url = window.URL.createObjectURL(blob);
     const link = document.body.appendChild(document.createElement("a"));
     link.href = url;
