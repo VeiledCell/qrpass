@@ -63,11 +63,17 @@ export default function IdentifyEncounterModal({ isOpen, onClose, uid, encounter
     if (!newName) return;
     setIsProcessing(true);
     try {
+      // Determine email and LinkedIn more robustly from contactInfo
+      const email = encounter.contactInfo?.includes("@") ? encounter.contactInfo : undefined;
+      const linkedIn = (encounter.contactInfo?.includes("linkedin.com") || encounter.contactInfo?.includes("http")) 
+        ? encounter.contactInfo 
+        : undefined;
+
       const profileId = await upsertConnectionProfile(uid, {
         name: newName,
-        email: encounter.contactInfo?.includes("@") ? encounter.contactInfo : undefined,
-        linkedIn: encounter.contactInfo?.includes("linkedin") ? encounter.contactInfo : undefined,
-        notes: encounter.transcription
+        email: email,
+        linkedIn: linkedIn,
+        notes: encounter.transcription || `Initial encounter recorded in ${encounter.location?.city || "Unknown Location"}.`
       });
       await linkEncounterToProfile(uid, encounter.id, profileId);
       onSuccess();

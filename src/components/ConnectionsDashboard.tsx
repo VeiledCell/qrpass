@@ -50,20 +50,28 @@ export default function ConnectionsDashboard({ uid }: Props) {
     setEditData({ ...conn });
     setLoadingDetails(true);
     try {
+      // Use a more robust fetch approach: get all and filter locally 
+      // to avoid complex index requirements in memory-only mode
       const q = query(
         collection(db, "users", uid, "encounters"),
-        where("connectionProfileId", "==", conn.id),
         orderBy("timestamp", "desc")
       );
       const querySnapshot = await getDocs(q);
-      const data = querySnapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id,
-        timestamp: convertToDate(doc.data().timestamp)
-      })) as Encounter[];
+      const data = querySnapshot.docs
+        .map(doc => ({
+          ...doc.data(),
+          id: doc.id,
+          timestamp: convertToDate(doc.data().timestamp)
+        }))
+        .filter((enc: any) => enc.connectionProfileId === conn.id) as Encounter[];
+      
+      console.log(`Found ${data.length} linked encounters for ${conn.name}`);
       setLinkedEncounters(data);
-    } catch (error) { console.error("Error fetching linked encounters:", error); } 
-    finally { setLoadingDetails(false); }
+    } catch (error) {
+      console.error("Error fetching linked encounters:", error);
+    } finally {
+      setLoadingDetails(false);
+    }
   };
 
   const handleSave = async () => {
