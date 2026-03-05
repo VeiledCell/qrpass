@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { UserProfile } from "@/lib/models";
 
 interface Props {
@@ -9,47 +10,110 @@ interface Props {
 }
 
 export default function SaveContactButton({ user, accentColor, isBold }: Props) {
-  const downloadVCard = () => {
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const imageUrlToBase64 = async (url: string): Promise<string | null> => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        const objectUrl = URL.createObjectURL(blob);
+        
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_SIZE = 200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          const dataURL = canvas.toDataURL("image/jpeg", 0.8);
+          URL.revokeObjectURL(objectUrl);
+          resolve(dataURL.split(",")[1]);
+        };
+        
+        img.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          resolve(null);
+        };
+        
+        img.src = objectUrl;
+      });
+    } catch (e) {
+      console.error("Image processing error:", e);
+      return null;
+    }
+  };
+
+  const downloadVCard = async () => {
+    setIsGenerating(true);
+    
     // Split displayName into first and last name for structured 'N' field
     const nameParts = user.displayName.trim().split(/\s+/);
     const firstName = nameParts[0] || "";
     const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
     const middleNames = nameParts.length > 2 ? nameParts.slice(1, -1).join(" ") : "";
 
+    let photoBase64 = null;
+    if (user.avatarUrl) {
+      photoBase64 = await imageUrlToBase64(user.avatarUrl);
+    }
+
     const vCard = [
       "BEGIN:VCARD",
       "VERSION:3.0",
       `FN:${user.displayName}`,
-      `N:${lastName};${firstName};${middleNames};;`, // Structured Name field
+      `N:${lastName};${firstName};${middleNames};;`,
       user.jobTitle ? `TITLE:${user.jobTitle}` : "",
       user.company ? `ORG:${user.company}` : "",
       user.phone ? `TEL;TYPE=CELL:${user.phone}` : "",
       user.email ? `EMAIL;TYPE=INTERNET:${user.email}` : "",
       user.bio ? `NOTE:${user.bio}` : "",
       `URL:https://qrpass-nine-zeta.vercel.app/u/${user.uid}`,
+      photoBase64 ? `PHOTO;ENCODING=b;TYPE=JPEG:${photoBase64}` : "",
       "END:VCARD"
     ].filter(Boolean).join("\n");
 
     const blob = new Blob([vCard], { type: "text/vcard" });
     const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const link = document.body.appendChild(document.createElement("a"));
     link.href = url;
     link.setAttribute("download", `${user.displayName.replace(/\s+/g, "_")}.vcf`);
-    document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    setIsGenerating(false);
   };
 
   return (
     <button
       onClick={downloadVCard}
-      className="px-10 py-4 rounded-full font-black text-lg transition-all hover:scale-105 active:scale-95 shadow-xl"
+      disabled={isGenerating}
+      className="px-10 py-4 rounded-full font-black text-lg transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50"
       style={{
         backgroundColor: accentColor,
         color: "#FFFFFF"
       }}
     >
-      Save to Contacts
+      {isGenerating ? "Preparing..." : "Save to Contacts"}
     </button>
   );
 }
