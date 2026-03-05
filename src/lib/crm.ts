@@ -44,7 +44,7 @@ export async function updateEncounter(uid: string, encounterId: string, data: Pa
 export async function upsertConnectionProfile(uid: string, profileData: Partial<ConnectionProfile>) {
   try {
     const connectionsRef = collection(db, "users", uid, "connections");
-    const docRef = profileData.id ? doc(connectionsRef, profileData.id) : doc(connectionsRef);
+    const docRef = profileData.id ? doc(db, "users", uid, "connections", profileData.id) : doc(connectionsRef);
     
     const finalData = {
       ...profileData,
