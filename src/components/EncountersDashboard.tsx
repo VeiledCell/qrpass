@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
 import { Encounter } from "@/lib/models";
-import { updateEncounter, upsertConnectionProfile, linkEncounterToProfile } from "@/lib/crm";
+import { updateEncounter } from "@/lib/crm";
 import FrictionlessCaptureModal from "./FrictionlessCaptureModal";
+import IdentifyEncounterModal from "./IdentifyEncounterModal";
 
 interface Props { uid: string; }
 
@@ -13,6 +14,8 @@ export default function EncountersDashboard({ uid }: Props) {
   const [encounters, setEncounters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isIdentifyModalOpen, setIsIdentifyModalOpen] = useState(false);
+  const [selectedEncounter, setSelectedEncounter] = useState<any>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<any>({});
 
@@ -47,27 +50,9 @@ export default function EncountersDashboard({ uid }: Props) {
     } catch (e) { alert("Update failed."); }
   };
 
-  const handleIdentify = async (encounter: any) => {
-    const name = prompt("Confirm name for this connection:", encounter.contactName || "");
-    if (!name) return;
-
-    try {
-      // 1. Create the master connection profile
-      const profileId = await upsertConnectionProfile(uid, {
-        name: name,
-        email: encounter.contactInfo?.includes("@") ? encounter.contactInfo : undefined,
-        linkedIn: encounter.contactInfo?.includes("linkedin") ? encounter.contactInfo : undefined,
-        notes: encounter.transcription
-      });
-
-      // 2. Link this specific encounter to that profile
-      await linkEncounterToProfile(uid, encounter.id, profileId);
-      
-      alert("Encounter identified and profile created!");
-      fetchEncounters();
-    } catch (e) {
-      alert("Identification failed.");
-    }
+  const openIdentify = (encounter: any) => {
+    setSelectedEncounter(encounter);
+    setIsIdentifyModalOpen(true);
   };
 
   const getStatusBadge = (encounter: any) => {
@@ -132,7 +117,7 @@ export default function EncountersDashboard({ uid }: Props) {
                         </div>
                         <div className="flex items-center gap-2">
                           {!encounter.connectionProfileId && (
-                            <button onClick={() => handleIdentify(encounter)} className="px-3 py-1 bg-white border border-[#E1E3E5] hover:border-black rounded text-[9px] font-black uppercase tracking-widest transition-all opacity-0 group-hover:opacity-100">Identify & Profile</button>
+                            <button onClick={() => openIdentify(encounter)} className="px-3 py-1 bg-white border border-[#E1E3E5] hover:border-black rounded text-[9px] font-black uppercase tracking-widest transition-all opacity-0 group-hover:opacity-100">Identify & Profile</button>
                           )}
                           <button onClick={() => startEdit(encounter)} className="p-2 text-gray-300 hover:text-black opacity-0 group-hover:opacity-100 transition-all"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
                         </div>
@@ -146,7 +131,15 @@ export default function EncountersDashboard({ uid }: Props) {
           </div>
         )}
       </div>
+      
       <FrictionlessCaptureModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); fetchEncounters(); }} />
+      <IdentifyEncounterModal 
+        isOpen={isIdentifyModalOpen} 
+        onClose={() => setIsIdentifyModalOpen(false)} 
+        uid={uid} 
+        encounter={selectedEncounter} 
+        onSuccess={fetchEncounters} 
+      />
     </div>
   );
 }
