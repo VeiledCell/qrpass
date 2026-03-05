@@ -58,11 +58,15 @@ export default function ConnectionsDashboard({ uid }: Props) {
       );
       const querySnapshot = await getDocs(q);
       const data = querySnapshot.docs
-        .map(doc => ({
-          ...doc.data(),
-          id: doc.id,
-          timestamp: convertToDate(doc.data().timestamp)
-        }))
+        .map(doc => {
+          const d = doc.data();
+          return {
+            ...d,
+            id: doc.id,
+            timestamp: convertToDate(d.timestamp),
+            loopClosureDate: d.loopClosureDate ? convertToDate(d.loopClosureDate) : null
+          };
+        })
         .filter((enc: any) => enc.connectionProfileId === conn.id) as Encounter[];
       
       console.log(`Found ${data.length} linked encounters for ${conn.name}`);
@@ -132,11 +136,21 @@ export default function ConnectionsDashboard({ uid }: Props) {
               ) : (
                 <div className="divide-y divide-gray-50">
                   {linkedEncounters.map((enc) => (
-                    <div key={enc.id} className="p-8 hover:bg-gray-50 transition-colors text-black">
+                    <div key={enc.id} className={`p-8 hover:bg-gray-50 transition-colors text-black ${enc.loopClosureDate && enc.loopClosureDate < new Date() ? 'bg-orange-50/20 border-l-4 border-orange-500' : ''}`}>
                       <div className="flex justify-between items-start mb-4">
                         <div className="space-y-1">
-                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{enc.timestamp.toLocaleDateString()} @ {enc.timestamp.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{enc.timestamp.toLocaleDateString()} @ {enc.timestamp.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
+                            {enc.loopClosureDate && enc.loopClosureDate < new Date() && (
+                              <span className="px-2 py-0.5 bg-orange-500 text-white rounded text-[7px] font-black uppercase tracking-widest animate-pulse">Action Required</span>
+                            )}
+                          </div>
                           <h4 className="font-bold">{enc.location?.city || "Remote Interaction"}</h4>
+                          {enc.loopClosureDate && (
+                            <p className={`text-[8px] font-black uppercase tracking-tighter ${enc.loopClosureDate < new Date() ? 'text-orange-600' : 'text-gray-400'}`}>
+                              Follow-up: {enc.loopClosureDate.toLocaleDateString()}
+                            </p>
+                          )}
                         </div>
                         <div className="flex gap-2">{enc.contextChips?.map(c => <span key={c} className="px-2 py-0.5 bg-gray-100 text-[8px] font-black uppercase text-gray-400 rounded">{c}</span>)}</div>
                       </div>
