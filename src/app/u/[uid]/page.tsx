@@ -49,11 +49,39 @@ async function fetchPubMedArticles(pmids: string[]) {
         title: article.title,
         authors: article.authors?.map((a: any) => a.name).join(", "),
         source: article.source,
-        pubdate: article.pubdate?.split(" ")[0]
+        pubdate: article.pubdate?.split(" ")[0],
+        url: `https://pubmed.ncbi.nlm.nih.gov/${id}`
       };
     }).filter(Boolean);
   } catch (error) {
     console.error("PubMed Fetch Error:", error);
+    return [];
+  }
+}
+
+async function fetchDOIArticles(dois: string[]) {
+  if (!dois || dois.length === 0) return [];
+  try {
+    const fetchPromises = dois.map(async (doi) => {
+      const res = await fetch(`https://api.crossref.org/works/${doi}`, {
+        next: { revalidate: 3600 }
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      const item = json.message;
+      return {
+        uid: doi,
+        title: item.title?.[0] || "Unknown Title",
+        authors: item.author?.map((a: any) => `${a.given} ${a.family}`).join(", ") || "Unknown Authors",
+        source: item['container-title']?.[0] || "DOI Indexed",
+        pubdate: item.created?.['date-parts']?.[0]?.[0] || "N/A",
+        url: `https://doi.org/${doi}`
+      };
+    });
+    const results = await Promise.all(fetchPromises);
+    return results.filter(Boolean);
+  } catch (error) {
+    console.error("DOI Fetch Error:", error);
     return [];
   }
 }
@@ -80,10 +108,13 @@ export default async function ProfilePage({ params }: PageProps) {
   if (!userData) return notFound();
 
   // Fetch Live Data
-  const [repos, articles] = await Promise.all([
+  const [repos, pubmedArticles, doiArticles] = await Promise.all([
     userData.githubUsername ? fetchGitHubRepos(userData.githubUsername) : Promise.resolve([]),
-    userData.pubmedIds ? fetchPubMedArticles(userData.pubmedIds) : Promise.resolve([])
+    userData.pubmedIds ? fetchPubMedArticles(userData.pubmedIds) : Promise.resolve([]),
+    userData.doiIds ? fetchDOIArticles(userData.doiIds) : Promise.resolve([])
   ]);
+
+  const allArticles = [...pubmedArticles, ...doiArticles];
 
   const isPremium = userData.isPremium === true;
   const theme: DesignPrefs = isPremium && userData.designPrefs
@@ -239,15 +270,15 @@ export default async function ProfilePage({ params }: PageProps) {
 
         {/* Integration Accordions */}
         <div className="w-full space-y-4 text-left px-2">
-          {articles.length > 0 && (
+          {allArticles.length > 0 && (
             <details className="group bg-white border border-gray-100 rounded-[2rem] overflow-hidden shadow-sm transition-all duration-500" style={{ backgroundColor: isDark ? '#111' : '#FFF', borderColor: isDark ? '#222' : '#F1F1F1' }}>
-              <summary className="p-6 cursor-pointer list-none flex justify-between items-center font-black uppercase tracking-widest text-[10px] opacity-50 hover:opacity-100 transition-opacity">
+              <summary className="p-6 cursor-pointer list-none flex justify-between items-center font-black uppercase tracking-widest text-[10px] opacity-50 hover:opacity-100 transition-opacity text-black">
                 Clinical Research
                 <svg className="w-4 h-4 transition-transform duration-500 group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
               </summary>
-              <div className="px-6 pb-6 space-y-6">
-                {articles.map((article: any, i: number) => (
-                  <a key={i} href={`https://pubmed.ncbi.nlm.nih.gov/${article.uid}`} target="_blank" rel="noopener noreferrer" className="block space-y-1 hover:opacity-70 transition-opacity">
+              <div className="px-6 pb-6 space-y-6 text-black">
+                {allArticles.map((article: any, i: number) => (
+                  <a key={i} href={article.url} target="_blank" rel="noopener noreferrer" className="block space-y-1 hover:opacity-70 transition-opacity">
                     <p className="font-bold text-sm leading-tight">{article.title}</p>
                     <p className="text-[10px] opacity-50 font-medium italic">{article.authors}</p>
                     <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-tighter opacity-40">
@@ -262,11 +293,11 @@ export default async function ProfilePage({ params }: PageProps) {
 
           {repos.length > 0 && (
             <details className="group bg-white border border-gray-100 rounded-[2rem] overflow-hidden shadow-sm transition-all duration-500" style={{ backgroundColor: isDark ? '#111' : '#FFF', borderColor: isDark ? '#222' : '#F1F1F1' }}>
-              <summary className="p-6 cursor-pointer list-none flex justify-between items-center font-black uppercase tracking-widest text-[10px] opacity-50 hover:opacity-100 transition-opacity">
+              <summary className="p-6 cursor-pointer list-none flex justify-between items-center font-black uppercase tracking-widest text-[10px] opacity-50 hover:opacity-100 transition-opacity text-black">
                 Technical Projects
                 <svg className="w-4 h-4 transition-transform duration-500 group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
               </summary>
-              <div className="px-6 pb-6 space-y-4">
+              <div className="px-6 pb-6 space-y-4 text-black">
                 {repos.map((repo: any, i: number) => (
                   <a key={i} href={repo.html_url} target="_blank" rel="noopener noreferrer" className="block p-4 rounded-2xl bg-gray-50/50 hover:bg-gray-50 transition-colors" style={{ backgroundColor: isDark ? '#1A1A1A' : '#F9F9F9' }}>
                     <div className="flex justify-between items-start mb-1">
@@ -296,24 +327,24 @@ export default async function ProfilePage({ params }: PageProps) {
                   }}
                 >
                   <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: theme.accentColor }}></div>
-                  <h4 className="font-black text-xl mb-6 tracking-tight" style={{ color: isBold ? theme.accentColor : 'inherit' }}>
+                  <h4 className="font-black text-xl mb-6 tracking-tight text-black" style={{ color: isBold ? theme.accentColor : 'inherit' }}>
                     {project.title}
                   </h4>
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-1">
                         <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Problem Statement</p>
-                        <p className="text-sm font-medium leading-relaxed opacity-70">{project.problem}</p>
+                        <p className="text-sm font-medium leading-relaxed opacity-70 text-black">{project.problem}</p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Intervention (PDSA)</p>
-                        <p className="text-sm font-medium leading-relaxed opacity-70">{project.intervention}</p>
+                        <p className="text-sm font-medium leading-relaxed opacity-70 text-black">{project.intervention}</p>
                       </div>
                     </div>
                     <div className="pt-4 border-t border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style={{ borderColor: isDark ? '#222' : '#F9F9F9' }}>
                       <div className="space-y-1">
                         <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Process Metric</p>
-                        <p className="text-xs font-bold">{project.metric}</p>
+                        <p className="text-xs font-bold text-black">{project.metric}</p>
                       </div>
                       <div className="bg-green-50 px-4 py-2 rounded-full border border-green-100 flex items-center gap-2" style={{ backgroundColor: isDark ? '#062010' : '#F0FDF4', borderColor: isDark ? '#064e3b' : '#DCFCE7' }}>
                         <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>

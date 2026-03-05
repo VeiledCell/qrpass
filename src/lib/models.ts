@@ -67,6 +67,7 @@ export interface UserProfile {
   showQiProjects?: boolean;
   githubUsername?: string;
   pubmedIds?: string[];
+  doiIds?: string[];
   links: Link[];
   isPremium: boolean;
   viewCount?: number;

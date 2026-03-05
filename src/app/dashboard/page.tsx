@@ -19,6 +19,7 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pmidString, setPmidString] = useState("");
+  const [doiString, setDoiString] = useState("");
   const [activeTab, setActiveTab] = useState<'editor' | 'encounters' | 'connections'>('editor');
   const router = useRouter();
 
@@ -31,9 +32,8 @@ export default function Dashboard() {
           if (docSnap.exists()) {
             const data = docSnap.data() as UserProfile;
             setProfile(data);
-            if (data.pubmedIds) {
-              setPmidString(data.pubmedIds.join(", "));
-            }
+            if (data.pubmedIds) setPmidString(data.pubmedIds.join(", "));
+            if (data.doiIds) setDoiString(data.doiIds.join(", "));
           } else {
             setError("Profile not found in database.");
           }
@@ -115,6 +115,8 @@ export default function Dashboard() {
     if (!profile) return;
     setSaving(true);
     const pubmedIds = pmidString.split(",").map(id => id.trim()).filter(id => id !== "");
+    const doiIds = doiString.split(",").map(id => id.trim()).filter(id => id !== "");
+
     try {
       await updateDoc(doc(db, "users", profile.uid), {
         displayName: profile.displayName,
@@ -130,6 +132,7 @@ export default function Dashboard() {
         showQiProjects: profile.showQiProjects || false,
         githubUsername: profile.githubUsername || "",
         pubmedIds: pubmedIds,
+        doiIds: doiIds,
         links: profile.links,
         designPrefs: profile.designPrefs,
         isPremium: profile.isPremium
@@ -207,6 +210,7 @@ export default function Dashboard() {
   return (
     <main className="min-h-screen bg-[#F8F9FA] text-[#1A1C1E] p-4 sm:p-10 font-sans antialiased">
       <div className="max-w-7xl mx-auto space-y-10">
+        {/* Hospital Metrics Header */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm">
           <div className="space-y-1">
             <h1 className="text-2xl font-bold tracking-tight text-[#1A1C1E]">OPERATIONS DASHBOARD</h1>
@@ -224,6 +228,7 @@ export default function Dashboard() {
           </div>
         </header>
 
+        {/* Tab Navigation */}
         <div className="flex bg-white border border-[#E1E3E5] p-1 rounded-xl w-full max-w-xl mx-auto sm:mx-0">
           <button onClick={() => setActiveTab('editor')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${activeTab === 'editor' ? 'bg-[#1A1C1E] text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}>Editor</button>
           <button onClick={() => setActiveTab('encounters')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${activeTab === 'encounters' ? 'bg-[#1A1C1E] text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}>Activity Ledger</button>
@@ -232,6 +237,7 @@ export default function Dashboard() {
 
         {activeTab === 'editor' && (
           <div className="space-y-10 animate-in fade-in duration-700">
+            {/* Analytics Widget Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm space-y-2">
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Profile Engagements</p>
@@ -256,6 +262,7 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-8">
+                {/* Identity Section */}
                 <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
                   <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5]"><h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Identity & Credentials</h2></div>
                   <div className="p-8 space-y-8">
@@ -299,12 +306,23 @@ export default function Dashboard() {
                   </div>
                 </section>
 
+                {/* API Integrations */}
                 <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
                   <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5]"><h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Live API Integrations</h2></div>
                   <div className="p-8 space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <input type="text" value={profile.githubUsername || ""} onChange={(e) => setProfile({...profile, githubUsername: e.target.value})} placeholder="GitHub Username" className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" />
-                      <input type="text" value={pmidString} onChange={(e) => setPmidString(e.target.value)} placeholder="PubMed IDs" className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" />
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">GitHub User</label>
+                        <input type="text" value={profile.githubUsername || ""} onChange={(e) => setProfile({...profile, githubUsername: e.target.value})} placeholder="octocat" className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">PubMed IDs</label>
+                        <input type="text" value={pmidString} onChange={(e) => setPmidString(e.target.value)} placeholder="34567890" className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">DOI IDs</label>
+                        <input type="text" value={doiString} onChange={(e) => setDoiString(e.target.value)} placeholder="10.1001/jama.2023.1" className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" />
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -336,6 +354,7 @@ export default function Dashboard() {
                 </section>
               </div>
 
+              {/* Sidebar */}
               <div className="space-y-8">
                 <section className="bg-[#1A1C1E] text-white p-10 rounded-xl shadow-lg flex flex-col items-center text-center space-y-6">
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50">Distribution QR</p>
