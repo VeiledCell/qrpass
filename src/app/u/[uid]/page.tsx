@@ -107,14 +107,27 @@ export default async function ProfilePage({ params }: PageProps) {
 
   if (!userData) return notFound();
 
-  // Fetch Live Data
-  const [repos, pubmedArticles, doiArticles] = await Promise.all([
-    userData.githubUsername ? fetchGitHubRepos(userData.githubUsername) : Promise.resolve([]),
-    userData.pubmedIds ? fetchPubMedArticles(userData.pubmedIds) : Promise.resolve([]),
-    userData.doiIds ? fetchDOIArticles(userData.doiIds) : Promise.resolve([])
-  ]);
+  // Fetch Live Data only if toggled on
+  const fetchPromises = [];
+  if (userData.showGitHub && userData.githubUsername) {
+    fetchPromises.push(fetchGitHubRepos(userData.githubUsername));
+  } else {
+    fetchPromises.push(Promise.resolve([]));
+  }
 
-  const allArticles = [...pubmedArticles, ...doiArticles];
+  if (userData.showPublications) {
+    const pmids = userData.pubmedIds || [];
+    const dois = userData.doiIds || [];
+    fetchPromises.push(Promise.all([
+      pmids.length > 0 ? fetchPubMedArticles(pmids) : Promise.resolve([]),
+      dois.length > 0 ? fetchDOIArticles(dois) : Promise.resolve([])
+    ]));
+  } else {
+    fetchPromises.push(Promise.resolve([[], []]));
+  }
+
+  const [repos, pubData] = await Promise.all(fetchPromises);
+  const allArticles = [...pubData[0], ...pubData[1]];
 
   const isPremium = userData.isPremium === true;
   const theme: DesignPrefs = isPremium && userData.designPrefs
@@ -129,34 +142,8 @@ export default async function ProfilePage({ params }: PageProps) {
     return url.startsWith("http") ? url : `https://${url}`;
   };
 
-  // CV HIGHLIGHTS PLACEHOLDERS
-  const highlights = (userData.cvHighlights && userData.cvHighlights.length > 0) 
-    ? userData.cvHighlights 
-    : [
-        {
-          title: "Sepsis Bundle Compliance Strategy",
-          description: "Implemented a multi-disciplinary rapid response protocol reducing mortality by 18% over 12 months.",
-          link: "https://example.com/medical-qi"
-        },
-        {
-          title: "Lean Six Sigma: Surgical Efficiency",
-          description: "Streamlined pre-operative workflows in a tertiary care center, saving 45 minutes per surgical case.",
-          link: "https://example.com/lean-medical"
-        }
-      ];
-
-  // QI PROJECTS PLACEHOLDERS
-  const projects = (userData.qiProjects && userData.qiProjects.length > 0)
-    ? userData.qiProjects
-    : [
-        {
-          title: "Handover Error Mitigation",
-          problem: "Communication gaps during shift changes leading to medication reconciliation errors.",
-          intervention: "Standardized SBAR protocol implemented across 4 surgical wards.",
-          metric: "Incidence of reconciliation errors per 1000 bed days.",
-          result: "42% reduction in reported errors within first quarter."
-        }
-      ];
+  const highlights = userData.cvHighlights || [];
+  const projects = userData.qiProjects || [];
 
   return (
     <main 
@@ -173,12 +160,9 @@ export default async function ProfilePage({ params }: PageProps) {
         
         {/* Unified Identity Header (QR & Photo) */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12">
-          {/* Large QR Code */}
           <div className="flex-shrink-0">
             <ProfileQR uid={uid} avatarUrl={userData.avatarUrl} size={180} />
           </div>
-
-          {/* Profile Photo */}
           <div 
             className="w-32 h-32 sm:w-40 sm:h-40 rounded-[3rem] flex items-center justify-center text-5xl sm:text-6xl font-black shadow-2xl overflow-hidden border-4 border-white bg-white"
             style={{ 
@@ -209,10 +193,8 @@ export default async function ProfilePage({ params }: PageProps) {
           </p>
         </div>
 
-        {/* Two-Way Handshake System */}
         <HandshakeSystem ownerUid={uid} />
 
-        {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
            <SaveContactButton user={userData} accentColor={theme.accentColor} isBold={isBold} />
            {userData.bookingUrl && (
@@ -235,42 +217,44 @@ export default async function ProfilePage({ params }: PageProps) {
         </div>
 
         {/* Core Achievements Section */}
-        <div className="space-y-6 text-left px-2">
-           <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 text-center">Core Achievements</h3>
-           <div className="grid grid-cols-1 gap-4">
-             {highlights.map((item, idx) => (
-               <a 
-                 key={idx}
-                 href={formatUrl(item.link)}
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 className="group p-6 rounded-[2.5rem] bg-white border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500"
-                 style={{ 
-                    backgroundColor: isDark ? '#111' : '#FFF',
-                    borderColor: isDark ? '#222' : '#F1F1F1'
-                 }}
-               >
-                 <div className="flex items-start justify-between gap-4">
-                   <div className="space-y-2">
-                     <h4 className="font-black text-lg leading-tight" style={{ color: isBold ? theme.accentColor : 'inherit' }}>
-                       {item.title}
-                     </h4>
-                     <p className="text-sm font-medium opacity-50 leading-relaxed">
-                       {item.description}
-                     </p>
-                   </div>
-                   <div className="p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{ backgroundColor: theme.accentColor + '20', color: theme.accentColor }}>
-                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                   </div>
-                 </div>
-               </a>
-             ))}
-           </div>
-        </div>
+        {userData.showCvHighlights && highlights.length > 0 && (
+          <div className="space-y-6 text-left px-2">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 text-center">Core Achievements</h3>
+            <div className="grid grid-cols-1 gap-4">
+              {highlights.map((item, idx) => (
+                <a 
+                  key={idx}
+                  href={formatUrl(item.link)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group p-6 rounded-[2.5rem] bg-white border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500"
+                  style={{ 
+                      backgroundColor: isDark ? '#111' : '#FFF',
+                      borderColor: isDark ? '#222' : '#F1F1F1'
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-2">
+                      <h4 className="font-black text-lg leading-tight text-black" style={{ color: isBold ? theme.accentColor : 'inherit' }}>
+                        {item.title}
+                      </h4>
+                      <p className="text-sm font-medium opacity-50 leading-relaxed text-black">
+                        {item.description}
+                      </p>
+                    </div>
+                    <div className="p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{ backgroundColor: theme.accentColor + '20', color: theme.accentColor }}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Integration Accordions */}
         <div className="w-full space-y-4 text-left px-2">
-          {allArticles.length > 0 && (
+          {userData.showPublications && allArticles.length > 0 && (
             <details className="group bg-white border border-gray-100 rounded-[2rem] overflow-hidden shadow-sm transition-all duration-500" style={{ backgroundColor: isDark ? '#111' : '#FFF', borderColor: isDark ? '#222' : '#F1F1F1' }}>
               <summary className="p-6 cursor-pointer list-none flex justify-between items-center font-black uppercase tracking-widest text-[10px] opacity-50 hover:opacity-100 transition-opacity text-black">
                 Clinical Research
@@ -291,7 +275,7 @@ export default async function ProfilePage({ params }: PageProps) {
             </details>
           )}
 
-          {repos.length > 0 && (
+          {userData.showGitHub && repos.length > 0 && (
             <details className="group bg-white border border-gray-100 rounded-[2rem] overflow-hidden shadow-sm transition-all duration-500" style={{ backgroundColor: isDark ? '#111' : '#FFF', borderColor: isDark ? '#222' : '#F1F1F1' }}>
               <summary className="p-6 cursor-pointer list-none flex justify-between items-center font-black uppercase tracking-widest text-[10px] opacity-50 hover:opacity-100 transition-opacity text-black">
                 Technical Projects
@@ -313,7 +297,7 @@ export default async function ProfilePage({ params }: PageProps) {
         </div>
 
         {/* Clinical Integration Portfolio */}
-        {userData.showQiProjects && (
+        {userData.showQiProjects && projects.length > 0 && (
           <div className="space-y-8 text-left px-2 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 text-center">Clinical Integration Portfolio</h3>
             <div className="grid grid-cols-1 gap-6">
@@ -358,7 +342,6 @@ export default async function ProfilePage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Links Section */}
         <div className="space-y-3 w-full px-2">
           {(userData.links || []).map((link, index) => (
             <a
@@ -383,20 +366,19 @@ export default async function ProfilePage({ params }: PageProps) {
           ))}
         </div>
 
-        {/* Branding/Badge */}
         <div className="pb-12 flex flex-col items-center gap-4">
           {!isPremium ? (
-            <div className="px-6 py-2 bg-black/5 rounded-full text-[10px] font-black tracking-[0.2em] uppercase opacity-30">
+            <div className="px-6 py-2 bg-black/5 rounded-full text-[10px] font-black tracking-[0.2em] uppercase opacity-30 text-black">
               qrPass Card
             </div>
           ) : (
-            <div className="flex items-center gap-3 px-6 py-2 bg-white/5 rounded-full shadow-inner">
+            <div className="flex items-center gap-3 px-6 py-2 bg-white/5 rounded-full shadow-inner text-black">
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: theme.accentColor }}></span>
               <span className="text-[10px] font-black tracking-[0.2em] uppercase opacity-40">Verified Pro Card</span>
             </div>
           )}
           
-          <Link href="/" className="text-[10px] font-bold opacity-20 hover:opacity-50 transition-opacity uppercase tracking-widest">
+          <Link href="/" className="text-[10px] font-bold opacity-20 hover:opacity-50 transition-opacity uppercase tracking-widest text-black">
             Create your own qrPass →
           </Link>
         </div>
