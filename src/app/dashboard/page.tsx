@@ -10,6 +10,7 @@ import { UserProfile, Link as ProfileLink, DesignPrefs, CVHighlight, QIProject }
 import Link from "next/link";
 import ProfileQRCode from "@/components/ProfileQRCode";
 import EncountersDashboard from "@/components/EncountersDashboard";
+import ConnectionsDashboard from "@/components/ConnectionsDashboard";
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -18,7 +19,7 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pmidString, setPmidString] = useState("");
-  const [activeTab, setActiveTab] = useState<'editor' | 'encounters'>('editor');
+  const [activeTab, setActiveTab] = useState<'editor' | 'encounters' | 'connections'>('editor');
   const router = useRouter();
 
   useEffect(() => {
@@ -171,7 +172,7 @@ export default function Dashboard() {
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">System Active: {profile.displayName}</p>
               </div>
-              <p className="text-[9px] font-mono text-gray-300">UID: {profile.uid}</p>
+              <p className="text-[9px] font-mono text-gray-300 uppercase">UID: {profile.uid}</p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -181,22 +182,13 @@ export default function Dashboard() {
         </header>
 
         {/* Tab Navigation */}
-        <div className="flex bg-white border border-[#E1E3E5] p-1 rounded-xl w-full max-w-md mx-auto sm:mx-0">
-          <button 
-            onClick={() => setActiveTab('editor')}
-            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${activeTab === 'editor' ? 'bg-[#1A1C1E] text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            Profile Editor
-          </button>
-          <button 
-            onClick={() => setActiveTab('encounters')}
-            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${activeTab === 'encounters' ? 'bg-[#1A1C1E] text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            CRM encounters
-          </button>
+        <div className="flex bg-white border border-[#E1E3E5] p-1 rounded-xl w-full max-w-xl mx-auto sm:mx-0">
+          <button onClick={() => setActiveTab('editor')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${activeTab === 'editor' ? 'bg-[#1A1C1E] text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}>Editor</button>
+          <button onClick={() => setActiveTab('encounters')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${activeTab === 'encounters' ? 'bg-[#1A1C1E] text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}>Activity Ledger</button>
+          <button onClick={() => setActiveTab('connections')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${activeTab === 'connections' ? 'bg-[#1A1C1E] text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}>Intel Rolodex</button>
         </div>
 
-        {activeTab === 'editor' ? (
+        {activeTab === 'editor' && (
           <div className="space-y-10 animate-in fade-in duration-700">
             {/* Analytics Widget Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -267,24 +259,16 @@ export default function Dashboard() {
                   </div>
                 </section>
 
-                {/* API Integrations */}
                 <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
                   <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5]"><h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Live API Integrations</h2></div>
                   <div className="p-8 space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">GitHub Username</label>
-                        <input type="text" value={profile.githubUsername || ""} onChange={(e) => setProfile({...profile, githubUsername: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">PubMed IDs</label>
-                        <input type="text" value={pmidString} onChange={(e) => setPmidString(e.target.value)} placeholder="34567890, 12345678" className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" />
-                      </div>
+                      <input type="text" value={profile.githubUsername || ""} onChange={(e) => setProfile({...profile, githubUsername: e.target.value})} placeholder="GitHub Username" className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" />
+                      <input type="text" value={pmidString} onChange={(e) => setPmidString(e.target.value)} placeholder="PubMed IDs" className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" />
                     </div>
                   </div>
                 </section>
 
-                {/* QI Projects */}
                 <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
                   <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5] flex justify-between items-center">
                     <div className="flex items-center gap-4">
@@ -331,9 +315,10 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        ) : (
-          <EncountersDashboard uid={profile.uid} />
         )}
+
+        {activeTab === 'encounters' && <EncountersDashboard uid={profile.uid} />}
+        {activeTab === 'connections' && <ConnectionsDashboard uid={profile.uid} />}
       </div>
     </main>
   );

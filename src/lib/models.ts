@@ -11,7 +11,11 @@ export interface CVHighlight {
 
 export interface Encounter {
   id: string;
+  type?: 'ghost_scan' | 'handshake' | 'manual';
   scannedUserId?: string | null;
+  connectionProfileId?: string | null;
+  contactName?: string;
+  contactInfo?: string;
   timestamp: Date;
   location: {
     lat: number;
@@ -20,6 +24,18 @@ export interface Encounter {
   };
   contextChips: string[];
   transcription?: string;
+}
+
+export interface ConnectionProfile {
+  id: string;
+  name: string;
+  email?: string;
+  linkedIn?: string;
+  company?: string;
+  jobTitle?: string;
+  notes?: string;
+  createdAt: Date;
+  lastEncounterAt: Date;
 }
 
 export interface QIProject {

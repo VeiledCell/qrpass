@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
 import { Encounter } from "@/lib/models";
-import { updateEncounter } from "@/lib/crm";
+import { updateEncounter, upsertConnectionProfile, linkEncounterToProfile } from "@/lib/crm";
 import FrictionlessCaptureModal from "./FrictionlessCaptureModal";
 
 interface Props { uid: string; }
@@ -45,6 +45,29 @@ export default function EncountersDashboard({ uid }: Props) {
       setEditingId(null);
       fetchEncounters();
     } catch (e) { alert("Update failed."); }
+  };
+
+  const handleIdentify = async (encounter: any) => {
+    const name = prompt("Confirm name for this connection:", encounter.contactName || "");
+    if (!name) return;
+
+    try {
+      // 1. Create the master connection profile
+      const profileId = await upsertConnectionProfile(uid, {
+        name: name,
+        email: encounter.contactInfo?.includes("@") ? encounter.contactInfo : undefined,
+        linkedIn: encounter.contactInfo?.includes("linkedin") ? encounter.contactInfo : undefined,
+        notes: encounter.transcription
+      });
+
+      // 2. Link this specific encounter to that profile
+      await linkEncounterToProfile(uid, encounter.id, profileId);
+      
+      alert("Encounter identified and profile created!");
+      fetchEncounters();
+    } catch (e) {
+      alert("Identification failed.");
+    }
   };
 
   const getStatusBadge = (encounter: any) => {
@@ -98,6 +121,7 @@ export default function EncountersDashboard({ uid }: Props) {
                         <div className="flex items-center gap-3">
                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{encounter.timestamp.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                           {getStatusBadge(encounter)}
+                          {encounter.connectionProfileId && <span className="px-2 py-0.5 bg-blue-900 text-white rounded text-[8px] font-black uppercase tracking-widest">Linked to Intel</span>}
                         </div>
                         <h3 className="text-lg font-bold text-[#1A1C1E]">{encounter.contactName || (encounter.location?.city || "Anonymous Scan")}</h3>
                         {encounter.contactInfo && <p className="text-xs font-bold text-blue-600 lowercase tracking-tight">{encounter.contactInfo}</p>}
@@ -106,7 +130,12 @@ export default function EncountersDashboard({ uid }: Props) {
                         <div className="flex flex-wrap gap-2">
                           {encounter.contextChips?.map((chip: string) => <span key={chip} className="px-3 py-1 bg-gray-100 text-[9px] font-black uppercase tracking-tighter text-gray-500 rounded-md">{chip}</span>)}
                         </div>
-                        <button onClick={() => startEdit(encounter)} className="p-2 text-gray-300 hover:text-black opacity-0 group-hover:opacity-100 transition-all"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
+                        <div className="flex items-center gap-2">
+                          {!encounter.connectionProfileId && (
+                            <button onClick={() => handleIdentify(encounter)} className="px-3 py-1 bg-white border border-[#E1E3E5] hover:border-black rounded text-[9px] font-black uppercase tracking-widest transition-all opacity-0 group-hover:opacity-100">Identify & Profile</button>
+                          )}
+                          <button onClick={() => startEdit(encounter)} className="p-2 text-gray-300 hover:text-black opacity-0 group-hover:opacity-100 transition-all"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
+                        </div>
                       </div>
                     </div>
                     {encounter.transcription && <div className="p-4 bg-[#F8F9FA] rounded-lg border-l-4 border-blue-500"><p className="text-sm font-medium text-gray-600 italic leading-relaxed">"{encounter.transcription}"</p></div>}
