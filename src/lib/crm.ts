@@ -92,3 +92,22 @@ export async function deleteConnection(uid: string, profileId: string) {
     throw error;
   }
 }
+
+/**
+ * Constructs a mailto URI for follow-up actions.
+ */
+export function constructMailto(type: 'update' | 'coffee', profile: ConnectionProfile, latestEncounter?: Encounter) {
+  if (!profile.email) return null;
+
+  const subject = type === 'update' ? "Checking in!" : "Catch up over coffee?";
+  let body = `Hi ${profile.name},%0D%0A%0D%0A`;
+
+  if (type === 'update') {
+    const transcriptionSnippet = latestEncounter?.transcription ? `We spoke previously about: ${latestEncounter.transcription}.%0D%0A%0D%0A` : "";
+    body += `${transcriptionSnippet}I wanted to follow up and...`;
+  } else {
+    body += `I'd love to grab a quick coffee/Zoom to hear what you are working on lately.%0D%0A%0D%0AIf you have 15 minutes to spare in the coming weeks, feel free to grab a time on my calendar. No pressure at all if your schedule is too packed right now!`;
+  }
+
+  return `mailto:${profile.email}?subject=${encodeURIComponent(subject)}&body=${body}`;
+}
