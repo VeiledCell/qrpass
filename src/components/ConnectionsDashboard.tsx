@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase";
 import { collection, query, orderBy, getDocs, Timestamp, where } from "firebase/firestore";
 import { ConnectionProfile, Encounter } from "@/lib/models";
 import { deleteConnection, upsertConnectionProfile, constructMailto } from "@/lib/crm";
+import { generateCalendarLink, generateICSBlob } from "@/lib/calendar";
 
 interface Props { uid: string; }
 
@@ -14,7 +15,6 @@ export default function ConnectionsDashboard({ uid }: Props) {
   const [selectedConn, setSelectedConn] = useState<ConnectionProfile | null>(null);
   const [linkedEncounters, setLinkedEncounters] = useState<Encounter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingDetails, setLoadingDetails] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<ConnectionProfile>>({});
 
@@ -103,6 +103,25 @@ export default function ConnectionsDashboard({ uid }: Props) {
     if (mailto) window.location.href = mailto;
   };
 
+  const handleScheduleFollowUp = (conn: ConnectionProfile) => {
+    const latest = allEncounters.filter(e => e.connectionProfileId === conn.id)[0];
+    const choice = confirm("Select Calendar Platform:\n\nOK for Google Calendar\nCancel for Apple/Outlook (.ics)");
+    
+    if (choice) {
+      const url = generateCalendarLink('google', conn, latest);
+      if (url) window.open(url, '_blank');
+    } else {
+      const blob = generateICSBlob(conn, latest);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Followup_${conn.name.replace(/\s/g, '_')}.ics`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   const now = new Date();
   const connectionsWithStatus = connections.map(conn => {
     const encounters = allEncounters.filter(e => e.connectionProfileId === conn.id);
@@ -121,7 +140,7 @@ export default function ConnectionsDashboard({ uid }: Props) {
     <div key={conn.id} className="bg-white border border-[#E1E3E5] rounded-xl shadow-sm hover:shadow-md transition-all group relative overflow-hidden flex flex-col">
       <div className={`absolute top-0 left-0 w-1 h-full transition-opacity ${conn.hasPendingLoop ? 'bg-orange-500 opacity-100' : 'bg-blue-500 opacity-20 group-hover:opacity-100'}`}></div>
       <div onClick={() => viewDetails(conn)} className="p-6 cursor-pointer space-y-4 flex-1">
-        <div className="space-y-1 text-black">
+        <div className="space-y-1 text-black text-left">
           <div className="flex justify-between items-start">
             <h3 className="font-bold text-lg">{conn.name}</h3>
             {conn.hasPendingLoop && (
@@ -140,18 +159,24 @@ export default function ConnectionsDashboard({ uid }: Props) {
       </div>
       
       {/* Quick Action Footer */}
-      <div className="bg-[#F8F9FA] border-t border-[#E1E3E5] p-3 flex gap-2">
+      <div className="bg-[#F8F9FA] border-t border-[#E1E3E5] p-3 grid grid-cols-3 gap-2">
         <button 
           onClick={() => handleDraftAction('update', conn)}
-          className="flex-1 py-2 bg-white border border-[#E1E3E5] hover:border-black rounded text-[8px] font-black uppercase tracking-widest text-gray-500 hover:text-black transition-all"
+          className="py-2 bg-white border border-[#E1E3E5] hover:border-black rounded text-[7px] font-black uppercase tracking-widest text-gray-500 hover:text-black transition-all"
         >
           Draft Update
         </button>
         <button 
           onClick={() => handleDraftAction('coffee', conn)}
-          className="flex-1 py-2 bg-white border border-[#E1E3E5] hover:border-black rounded text-[8px] font-black uppercase tracking-widest text-gray-500 hover:text-black transition-all"
+          className="py-2 bg-white border border-[#E1E3E5] hover:border-black rounded text-[7px] font-black uppercase tracking-widest text-gray-500 hover:text-black transition-all"
         >
-          Invite to Coffee
+          Invite
+        </button>
+        <button 
+          onClick={() => handleScheduleFollowUp(conn)}
+          className="py-2 bg-[#1A1C1E] text-white rounded text-[7px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-sm"
+        >
+          Calendar
         </button>
       </div>
     </div>
@@ -161,7 +186,7 @@ export default function ConnectionsDashboard({ uid }: Props) {
     return (
       <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
         <div className="bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="flex items-center gap-6 text-black">
+          <div className="flex items-center gap-6 text-black text-left">
             <button onClick={() => { setSelectedConn(null); setIsEditing(false); }} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg></button>
             <div>{isEditing ? <input value={editData.name || ""} onChange={(e) => setEditData({...editData, name: e.target.value})} className="text-2xl font-bold border-b border-black outline-none" /> : <h2 className="text-2xl font-bold tracking-tight">{selectedConn.name}</h2>}<p className="text-[10px] font-black uppercase tracking-widest text-blue-600">{selectedConn.jobTitle || 'Active Contact'} @ {selectedConn.company || 'Organization'}</p></div>
           </div>
@@ -178,12 +203,12 @@ export default function ConnectionsDashboard({ uid }: Props) {
                 <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Interaction Timeline</h2>
                 <div className="flex gap-2">
                   <button onClick={() => handleDraftAction('update', selectedConn)} className="px-3 py-1 bg-[#1A1C1E] text-white rounded text-[8px] font-black uppercase tracking-widest">Update</button>
-                  <button onClick={() => handleDraftAction('coffee', selectedConn)} className="px-3 py-1 bg-white border border-gray-200 text-black rounded text-[8px] font-black uppercase tracking-widest">Coffee</button>
+                  <button onClick={() => handleScheduleFollowUp(selectedConn)} className="px-3 py-1 bg-white border border-gray-200 text-black rounded text-[8px] font-black uppercase tracking-widest">Calendar</button>
                 </div>
               </div>
               <div className="divide-y divide-gray-50">
                 {linkedEncounters.map((enc) => (
-                  <div key={enc.id} className={`p-8 hover:bg-gray-50 transition-colors text-black ${enc.loopClosureDate && enc.loopClosureDate < now ? 'bg-orange-50/20 border-l-4 border-orange-500' : ''}`}>
+                  <div key={enc.id} className={`p-8 hover:bg-gray-50 transition-colors text-black text-left ${enc.loopClosureDate && enc.loopClosureDate < now ? 'bg-orange-50/20 border-l-4 border-orange-500' : ''}`}>
                     <div className="flex justify-between items-start mb-4">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -202,7 +227,7 @@ export default function ConnectionsDashboard({ uid }: Props) {
             </section>
           </div>
 
-          <div className="space-y-8 text-black">
+          <div className="space-y-8 text-black text-left">
             <section className="bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm space-y-6">
               <h2 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Identity Intelligence</h2>
               <div className="space-y-4">
@@ -224,18 +249,18 @@ export default function ConnectionsDashboard({ uid }: Props) {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="bg-white border border-[#E1E3E5] p-8 rounded-xl shadow-sm text-black flex justify-between items-center">
-        <div><h2 className="text-xl font-bold tracking-tight uppercase">Connection Intelligence</h2><p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Master Rolodex & Prioritized Pipeline</p></div>
+        <div className="text-left"><h2 className="text-xl font-bold tracking-tight uppercase">Connection Intelligence</h2><p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Master Rolodex & Prioritized Pipeline</p></div>
         <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-100"><p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{connections.length} Nodes Synchronized</p></div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         <div className="space-y-6">
           <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-600 ml-2 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>Needs Attention: Loop Closure</h3>
-          <div className="space-y-4">{loading ? <div className="py-10 text-center text-[10px] font-black text-gray-300">Scanning Database...</div> : needsAttention.length === 0 ? <div className="py-10 text-center border border-dashed border-gray-200 rounded-xl text-[10px] font-black text-gray-300 uppercase tracking-widest">Pipeline Clear</div> : needsAttention.map(renderConnectionCard)}</div>
+          <div className="space-y-4">{loading ? <div className="py-10 text-center text-[10px] font-black text-gray-300 tracking-widest uppercase">Scanning Database...</div> : needsAttention.length === 0 ? <div className="py-10 text-center border border-dashed border-gray-200 rounded-xl text-[10px] font-black text-gray-300 uppercase tracking-widest">Pipeline Clear</div> : needsAttention.map(renderConnectionCard)}</div>
         </div>
         <div className="space-y-6">
           <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 ml-2 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-500/20"></span>Stable Nodes: Established</h3>
-          <div className="space-y-4">{loading ? <div className="py-10 text-center text-[10px] font-black text-gray-300">Scanning Database...</div> : stableNodes.length === 0 ? <div className="py-10 text-center border border-dashed border-gray-200 rounded-xl text-[10px] font-black text-gray-300 uppercase tracking-widest">No Active Nodes</div> : stableNodes.map(renderConnectionCard)}</div>
+          <div className="space-y-4">{loading ? <div className="py-10 text-center text-[10px] font-black text-gray-300 tracking-widest uppercase">Scanning Database...</div> : stableNodes.length === 0 ? <div className="py-10 text-center border border-dashed border-gray-200 rounded-xl text-[10px] font-black text-gray-300 uppercase tracking-widest">No Active Nodes</div> : stableNodes.map(renderConnectionCard)}</div>
         </div>
       </div>
     </div>
