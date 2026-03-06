@@ -179,7 +179,7 @@ export default async function ProfilePage({ params }: PageProps) {
         {/* Unified Identity Header (QR & Photo) */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12 text-black">
           <div className="flex-shrink-0">
-            <ProfileQR uid={actualUid} avatarUrl={userData.avatarUrl} size={180} />
+            <ProfileQR uid={actualUid} slug={userData.slug} avatarUrl={userData.avatarUrl} size={180} />
           </div>
           <div 
             className="w-32 h-32 sm:w-40 sm:h-40 rounded-[3rem] flex items-center justify-center text-5xl sm:text-6xl font-black shadow-2xl overflow-hidden border-4 border-white bg-white"
