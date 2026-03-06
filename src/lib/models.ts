@@ -95,6 +95,7 @@ export interface UserProfile {
   doiIds?: string[];
   links: Link[];
   isPremium: boolean;
+  slug?: string;
   viewCount?: number;
   designPrefs: DesignPrefs;
 }

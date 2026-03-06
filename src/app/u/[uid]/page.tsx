@@ -1,7 +1,7 @@
 import { UserProfile, DesignPrefs } from "@/lib/models";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
 import Link from "next/link";
 import SaveContactButton from "./SaveContactButton";
 import ProfileQR from "./ProfileQR";
@@ -87,25 +87,34 @@ async function fetchDOIArticles(dois: string[]) {
 }
 
 export default async function ProfilePage({ params }: PageProps) {
-  const { uid } = await params;
+  const { uid: identifier } = await params;
 
   let userData: UserProfile | null = null;
 
   try {
-    const docRef = doc(db, "users", uid);
+    // 1. Try Direct UID Lookup First
+    const docRef = doc(db, "users", identifier);
     const docSnap = await getDoc(docRef);
 
-    if (!docSnap.exists()) {
-      return notFound();
+    if (docSnap.exists()) {
+      userData = docSnap.data() as UserProfile;
+    } else {
+      // 2. Try Slug Lookup Second
+      const q = query(collection(db, "users"), where("slug", "==", identifier), limit(1));
+      const querySnap = await getDocs(q);
+      if (!querySnap.empty) {
+        userData = querySnap.docs[0].data() as UserProfile;
+      }
     }
-
-    userData = docSnap.data() as UserProfile;
   } catch (error) {
     console.error("Firestore Fetch Error:", error);
     throw new Error("Failed to load profile data.");
   }
 
   if (!userData) return notFound();
+
+  // Use the resolved UID from the found document for all child components
+  const actualUid = userData.uid;
 
   // Fetch Live Data only if toggled on
   const fetchPromises = [];
@@ -163,14 +172,14 @@ export default async function ProfilePage({ params }: PageProps) {
         filter: !isPremium ? 'grayscale(100%)' : 'none'
       }}
     >
-      <AnalyticsTracker uid={uid} />
+      <AnalyticsTracker uid={actualUid} />
       
       <div className="max-w-3xl w-full mt-4 sm:mt-8 space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out">
         
         {/* Unified Identity Header (QR & Photo) */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12 text-black">
           <div className="flex-shrink-0">
-            <ProfileQR uid={uid} avatarUrl={userData.avatarUrl} size={180} />
+            <ProfileQR uid={actualUid} avatarUrl={userData.avatarUrl} size={180} />
           </div>
           <div 
             className="w-32 h-32 sm:w-40 sm:h-40 rounded-[3rem] flex items-center justify-center text-5xl sm:text-6xl font-black shadow-2xl overflow-hidden border-4 border-white bg-white"
@@ -204,7 +213,7 @@ export default async function ProfilePage({ params }: PageProps) {
           </p>
         </div>
 
-        <HandshakeSystem ownerUid={uid} bookingUrl={userData.bookingUrl} />
+        <HandshakeSystem ownerUid={actualUid} bookingUrl={userData.bookingUrl} />
 
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
            <SaveContactButton user={userData} accentColor={theme.accentColor} isBold={isBold} />
@@ -230,7 +239,7 @@ export default async function ProfilePage({ params }: PageProps) {
         {/* Core Achievements Section */}
         {userData.showCvHighlights && highlights.length > 0 && (
           <div className="space-y-6 text-left px-2">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 text-center">Core Achievements</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-30 text-center text-black">Core Achievements</h3>
             <div className="grid grid-cols-1 gap-4">
               {highlights.map((item, idx) => (
                 <a 

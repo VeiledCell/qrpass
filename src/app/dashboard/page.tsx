@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { auth, db, storage } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/navigation";
 import { UserProfile, Link as ProfileLink, DesignPrefs, CVHighlight, QIProject, HackathonProject, Role } from "@/lib/models";
@@ -30,6 +30,7 @@ export default function Dashboard() {
   const [pmidString, setPmidString] = useState("");
   const [doiString, setDoiString] = useState("");
   const [activeTab, setActiveTab] = useState<'editor' | 'encounters' | 'connections'>('editor');
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const router = useRouter();
 
   useEffect(() => {
@@ -58,6 +59,35 @@ export default function Dashboard() {
     });
     return () => unsubscribe();
   }, [router]);
+
+  const checkSlug = async (slug: string) => {
+    if (!slug || slug.length < 3) {
+      setSlugStatus('idle');
+      return;
+    }
+    setSlugStatus('checking');
+    try {
+      const q = query(collection(db, "users"), where("slug", "==", slug.toLowerCase()), limit(1));
+      const querySnap = await getDocs(q);
+      if (querySnap.empty || querySnap.docs[0].id === profile?.uid) {
+        setSlugStatus('available');
+      } else {
+        setSlugStatus('taken');
+      }
+    } catch (e) {
+      setSlugStatus('idle');
+    }
+  };
+
+  const handleSlugChange = (val: string) => {
+    if (!profile?.isPremium) {
+      alert("Custom Slugs are a PRO feature. Upgrade to unlock!");
+      return;
+    }
+    const clean = val.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+    setProfile({ ...profile, slug: clean });
+    checkSlug(clean);
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,6 +120,10 @@ export default function Dashboard() {
 
   const handleSave = async () => {
     if (!profile) return;
+    if (slugStatus === 'taken') {
+      alert("That slug is already taken. Please choose another.");
+      return;
+    }
     setSaving(true);
     const pubmedIds = pmidString.split(",").map(id => id.trim()).filter(id => id !== "");
     const doiIds = doiString.split(",").map(id => id.trim()).filter(id => id !== "");
@@ -216,7 +250,9 @@ export default function Dashboard() {
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black uppercase tracking-widest text-xs bg-white text-black">Initializing...</div>;
   if (!profile) return null;
 
-  const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/u/${profile.uid}`;
+  const publicUrl = profile.slug 
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/u/${profile.slug}`
+    : `${typeof window !== 'undefined' ? window.location.origin : ''}/u/${profile.uid}`;
 
   const renderToggle = (field: keyof UserProfile) => (
     <div className="flex items-center gap-2">
@@ -235,7 +271,7 @@ export default function Dashboard() {
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">UID: {profile.uid}</p>
           </div>
           <div className="flex gap-3">
-            <Link href={`/u/${profile.uid}`} className="px-6 py-3 bg-[#1A1C1E] text-white rounded-lg font-bold text-[10px] uppercase tracking-widest hover:bg-black transition-colors">Launch Public Card</Link>
+            <Link href={profile.slug ? `/u/${profile.slug}` : `/u/${profile.uid}`} className="px-6 py-3 bg-[#1A1C1E] text-white rounded-lg font-bold text-[10px] uppercase tracking-widest hover:bg-black transition-colors">Launch Public Card</Link>
             <button onClick={() => signOut(auth)} className="px-6 py-3 border border-[#E1E3E5] text-gray-500 rounded-lg font-bold text-[10px] uppercase tracking-widest hover:bg-red-50 hover:text-red-600 transition-all">Terminate Session</button>
           </div>
         </header>
@@ -261,6 +297,28 @@ export default function Dashboard() {
                       <input type="file" accept="image/*" onChange={handleImageUpload} className="block text-[10px] font-black uppercase file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-[#1A1C1E] file:text-white cursor-pointer" />
                     </div>
 
+                    {/* Premium Slug Editor */}
+                    <div className="space-y-2 border-b border-gray-50 pb-8">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-black uppercase text-gray-400">Custom URL Slug (PRO)</label>
+                        {slugStatus === 'checking' && <span className="text-[8px] font-bold text-blue-500 uppercase animate-pulse">Checking...</span>}
+                        {slugStatus === 'available' && <span className="text-[8px] font-bold text-green-500 uppercase">✓ Available</span>}
+                        {slugStatus === 'taken' && <span className="text-[8px] font-bold text-red-500 uppercase">✗ Already Taken</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-gray-300">qrpass.hsieh.org/u/</span>
+                        <input 
+                          type="text" 
+                          value={profile.slug || ""} 
+                          disabled={!profile.isPremium}
+                          onChange={(e) => handleSlugChange(e.target.value)}
+                          placeholder="your-name" 
+                          className={`flex-1 px-4 py-3 bg-[#F8F9FA] border rounded-lg font-bold text-sm focus:outline-none ${!profile.isPremium ? 'opacity-50 grayscale cursor-not-allowed' : 'border-[#E1E3E5] focus:border-[#1A1C1E]'}`} 
+                        />
+                      </div>
+                      {!profile.isPremium && <p className="text-[8px] font-bold text-orange-600 uppercase tracking-tighter">Upgrade to Pro to claim your custom URL</p>}
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-400">Full Name</label><input type="text" value={profile.displayName} onChange={(e) => setProfile({...profile, displayName: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm" /></div>
                       <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-400">Primary Phone</label><input type="tel" value={profile.phone || ""} onChange={(e) => setProfile({...profile, phone: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" /></div>
@@ -276,12 +334,6 @@ export default function Dashboard() {
                             <div className="space-y-1"><label className="text-[8px] font-black uppercase text-gray-400">Organization</label><input type="text" value={role.company} onChange={(e) => updateRole(idx, 'company', e.target.value)} placeholder="e.g. Hospital Group" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold" /></div>
                           </div>
                         ))}
-                        {(profile.roles || []).length === 0 && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-400">Legacy Job Title</label><input type="text" value={profile.jobTitle || ""} onChange={(e) => setProfile({...profile, jobTitle: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" /></div>
-                            <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-400">Legacy Organization</label><input type="text" value={profile.company || ""} onChange={(e) => setProfile({...profile, company: e.target.value})} className="w-full px-4 py-3 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg font-bold text-sm focus:outline-none" /></div>
-                          </div>
-                        )}
                       </div>
                     </div>
 
