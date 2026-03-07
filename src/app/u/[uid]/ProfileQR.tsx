@@ -1,6 +1,7 @@
 "use client";
 
 import ProfileQRCode from "@/components/ProfileQRCode";
+import { BASE_URL } from "@/lib/constants";
 
 interface Props {
   uid: string;
@@ -10,9 +11,9 @@ interface Props {
 }
 
 export default function ProfileQR({ uid, slug, avatarUrl, size = 120 }: Props) {
-  // Prioritize the slug for the QR code URL, fallback to raw UID
+  // Ensure the URL is absolute and uses the professional domain
   const identifier = slug || uid;
-  const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/u/${identifier}`;
+  const publicUrl = `${BASE_URL}/u/${identifier}`;
   
   return (
     <div className="flex flex-col items-center gap-4">

@@ -7,6 +7,7 @@ import { doc, getDoc, updateDoc, collection, query, where, getDocs, limit } from
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/navigation";
 import { UserProfile, Link as ProfileLink, DesignPrefs, CVHighlight, QIProject, HackathonProject, Role } from "@/lib/models";
+import { BASE_URL } from "@/lib/constants";
 import Link from "next/link";
 import ProfileQRCode from "@/components/ProfileQRCode";
 import EncountersDashboard from "@/components/EncountersDashboard";
@@ -256,8 +257,8 @@ export default function Dashboard() {
   if (!profile) return null;
 
   const publicUrl = profile.slug 
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/u/${profile.slug}`
-    : `${typeof window !== 'undefined' ? window.location.origin : ''}/u/${profile.uid}`;
+    ? `${BASE_URL}/u/${profile.slug}`
+    : `${BASE_URL}/u/${profile.uid}`;
 
   const renderToggle = (field: keyof UserProfile) => (
     <div className="flex items-center gap-2">

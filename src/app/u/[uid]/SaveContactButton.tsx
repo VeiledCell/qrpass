@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { UserProfile } from "@/lib/models";
+import { BASE_URL } from "@/lib/constants";
 
 interface Props {
   user: UserProfile;
@@ -26,7 +27,7 @@ export default function SaveContactButton({ user, accentColor, isBold }: Props) 
         
         img.onload = () => {
           const canvas = document.createElement("canvas");
-          const SIZE = 200; // Small size for vCard stability
+          const SIZE = 180; // Optimized size for iOS vCard
           canvas.width = SIZE;
           canvas.height = SIZE;
           const ctx = canvas.getContext("2d");
@@ -37,7 +38,7 @@ export default function SaveContactButton({ user, accentColor, isBold }: Props) 
           
           ctx?.drawImage(img, sX, sY, sW, sH, 0, 0, SIZE, SIZE);
           
-          const dataURL = canvas.toDataURL("image/jpeg", 0.6); // Higher compression for mobile loading
+          const dataURL = canvas.toDataURL("image/jpeg", 0.5); // High compression for reliable loading
           URL.revokeObjectURL(objectUrl);
           resolve(dataURL.split(",")[1]);
         };
@@ -58,7 +59,7 @@ export default function SaveContactButton({ user, accentColor, isBold }: Props) 
   const downloadVCard = async () => {
     setIsGenerating(true);
     
-    // 1. ROBUST NAME PARSING
+    // 1. NAME PARSING
     const fullName = user.displayName.trim();
     let firstName = "";
     let lastName = "";
@@ -81,42 +82,41 @@ export default function SaveContactButton({ user, accentColor, isBold }: Props) 
       ? user.roles[user.primaryRoleIndex] 
       : (user.roles && user.roles.length > 0) ? user.roles[0] : { jobTitle: user.jobTitle || "", company: user.company || "" };
 
-    // 3. IMAGE & FOLDING
+    // 3. IMAGE
     let photoBase64 = null;
     if (user.avatarUrl) {
       photoBase64 = await imageUrlToBase64(user.avatarUrl);
     }
 
-    const foldLine = (str: string) => {
-      return str.match(/.{1,72}/g)?.join("\r\n ") || str;
-    };
-
-    // 4. URL (Prefer Slug)
+    // 4. URL
     const identifier = user.slug || user.uid;
-    const profileUrl = `https://qrpass.hsieh.org/u/${identifier}`;
+    const profileUrl = `${BASE_URL}/u/${identifier}`;
 
-    // 5. VCARD 3.0 CONSTRUCTION (Best for Modern iOS)
-    const vCardLines = [
-      "BEGIN:VCARD",
-      "VERSION:3.0",
-      `FN:${fullName}`,
-      `N:${lastName};${firstName};; ;${suffix}`,
-      primaryRole.jobTitle ? `TITLE:${primaryRole.jobTitle}` : "",
-      primaryRole.company ? `ORG:${primaryRole.company}` : "",
-      user.phone ? `TEL;TYPE=CELL,VOICE:${user.phone}` : "",
-      user.email ? `EMAIL;TYPE=PREF,INTERNET:${user.email}` : "",
-      user.bio ? `NOTE:${user.bio.replace(/\n/g, " ")}` : "",
-      `URL;TYPE=WORK:${profileUrl}`,
-    ];
+    // 5. VCARD CONSTRUCTION (vCard 2.1 is actually more reliable for photo base64 on many iOS versions)
+    let vCard = `BEGIN:VCARD\r\n`;
+    vCard += `VERSION:2.1\r\n`;
+    vCard += `FN:${fullName}\r\n`;
+    vCard += `N:${lastName};${firstName};;;${suffix}\r\n`;
+    if (primaryRole.jobTitle) vCard += `TITLE:${primaryRole.jobTitle}\r\n`;
+    if (primaryRole.company) vCard += `ORG:${primaryRole.company}\r\n`;
+    if (user.phone) vCard += `TEL;CELL;VOICE:${user.phone}\r\n`;
+    if (user.email) vCard += `EMAIL;PREF;INTERNET:${user.email}\r\n`;
+    if (user.bio) vCard += `NOTE:${user.bio.replace(/\n/g, " ")}\r\n`;
+    vCard += `URL;WORK:${profileUrl}\r\n`;
 
     if (photoBase64) {
-      // Line folding is CRITICAL for PHOTO base64 data in vCard 3.0
-      vCardLines.push("PHOTO;TYPE=JPEG;ENCODING=b:" + foldLine(photoBase64));
+      vCard += `PHOTO;JPEG;ENCODING=BASE64:\r\n`;
+      // Manual folding for 2.1 compliance (72 chars + space)
+      const lines = photoBase64.match(/.{1,72}/g) || [];
+      lines.forEach(line => {
+        vCard += ` ${line}\r\n`;
+      });
+      vCard += `\r\n`;
     }
 
-    vCardLines.push("END:VCARD");
+    vCard += `END:VCARD`;
 
-    const blob = new Blob([vCardLines.join("\r\n")], { type: "text/vcard;charset=utf-8" });
+    const blob = new Blob([vCard], { type: "text/vcard;charset=utf-8" });
     const url = window.URL.createObjectURL(blob);
     const link = document.body.appendChild(document.createElement("a"));
     link.href = url;
@@ -131,10 +131,9 @@ export default function SaveContactButton({ user, accentColor, isBold }: Props) 
     <button
       onClick={downloadVCard}
       disabled={isGenerating}
-      className="px-10 py-4 rounded-full font-black text-lg transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50"
+      className="px-10 py-4 rounded-full font-black text-lg transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50 text-white"
       style={{
         backgroundColor: accentColor,
-        color: "#FFFFFF"
       }}
     >
       {isGenerating ? "Preparing..." : "Save to Contacts"}
