@@ -402,6 +402,24 @@ export default function Dashboard() {
                 </section>
 
                 <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5] flex justify-between items-center text-black"><div className="flex items-center gap-4"><h2 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Clinical Integration Portfolio</h2>{renderToggle('showQiProjects')}</div>{(profile.qiProjects || []).length < 3 && <button onClick={addQIProject} className="text-[10px] font-black text-blue-600 uppercase tracking-widest">+ New Project</button>}</div>
+                  <div className="p-8 space-y-8">{(profile.qiProjects || []).map((p, i) => (
+                    <div key={i} className="p-6 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg space-y-4 relative group text-black text-left">
+                      <button onClick={() => removeQIProject(i)} className="absolute top-4 right-4 text-red-400 hover:text-red-600"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                      <input placeholder="Project Title" value={p.title} onChange={(e) => updateQIProject(i, 'title', e.target.value)} className="w-full bg-transparent font-bold text-lg outline-none" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <textarea placeholder="Problem Statement" value={p.problem} onChange={(e) => updateQIProject(i, 'problem', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm resize-none" rows={2} />
+                        <textarea placeholder="Intervention (PDSA)" value={p.intervention} onChange={(e) => updateQIProject(i, 'intervention', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm resize-none" rows={2} />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <input placeholder="Process Metric" value={p.metric} onChange={(e) => updateQIProject(i, 'metric', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm font-bold" />
+                        <input placeholder="Result/Outcome" value={p.result} onChange={(e) => updateQIProject(i, 'result', e.target.value)} className="w-full bg-white border border-[#E1E3E5] p-3 rounded text-sm font-bold text-green-700" />
+                      </div>
+                    </div>
+                  ))}</div>
+                </section>
+
+                <section className="bg-white border border-[#E1E3E5] rounded-xl overflow-hidden shadow-sm">
                   <div className="bg-[#F1F3F5] px-8 py-4 border-b border-[#E1E3E5] flex justify-between items-center text-black"><div className="flex items-center gap-4"><h2 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Core Achievements</h2>{renderToggle('showCvHighlights')}</div>{(profile.cvHighlights || []).length < 3 && <button onClick={addCVHighlight} className="text-[10px] font-black text-blue-600 uppercase tracking-widest">+ Add Record</button>}</div>
                   <div className="p-8 space-y-6">{(profile.cvHighlights || []).map((h, i) => (
                     <div key={i} className="p-6 bg-[#F8F9FA] border border-[#E1E3E5] rounded-lg space-y-4 relative group text-black text-left"><button onClick={() => removeCVHighlight(i)} className="absolute top-4 right-4 text-red-400 hover:text-red-600"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg></button><input placeholder="Achievement Title" value={h.title} onChange={(e) => updateCVHighlight(i, 'title', e.target.value)} className="w-full bg-transparent font-bold text-lg outline-none" /><textarea placeholder="Description" value={h.description} onChange={(e) => updateCVHighlight(i, 'description', e.target.value)} className="w-full bg-transparent text-sm text-gray-500 outline-none resize-none" rows={2} /><input placeholder="Evidence Link" value={h.link} onChange={(e) => updateCVHighlight(i, 'link', e.target.value)} className="w-full bg-transparent text-xs text-blue-500 font-bold outline-none" /></div>
