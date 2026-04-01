@@ -74,7 +74,7 @@ export default function ProfileView({ userData, repos, allArticles, actualUid, p
 
       {/* HORIZONTAL MODE OVERLAY (TRADITIONAL BUSINESS CARD) */}
       <div 
-        className={`${isSwapped ? 'flex portrait:flex' : 'hidden landscape:flex'} fixed inset-0 z-[500] items-center justify-center p-6 sm:p-12 animate-in fade-in duration-500`} 
+        className={`${isSwapped ? 'flex landscape:hidden' : 'hidden landscape:flex'} fixed inset-0 z-[500] items-center justify-center p-6 sm:p-12 animate-in fade-in duration-500`} 
         style={{ backgroundColor: isDark ? 'rgba(0,0,0,0.95)' : 'rgba(240,240,240,0.95)' }}
       >
         <div 
@@ -176,7 +176,7 @@ export default function ProfileView({ userData, repos, allArticles, actualUid, p
       </div>
 
       {/* PORTRAIT MODE (Normal Content) */}
-      <div className={`max-w-3xl w-full mt-4 sm:mt-8 space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out p-4 sm:p-12 ${isSwapped ? 'landscape:block' : 'landscape:hidden'}`}>
+      <div className={`max-w-3xl w-full mt-4 sm:mt-8 space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out p-4 sm:p-12 ${isSwapped ? 'landscape:flex flex-col items-center' : 'landscape:hidden flex flex-col items-center'}`}>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12">
           <div className="flex-shrink-0">
             <ProfileQR uid={actualUid} slug={userData.slug} avatarUrl={userData.avatarUrl} size={180} />
